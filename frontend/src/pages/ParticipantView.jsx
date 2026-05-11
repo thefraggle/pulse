@@ -141,6 +141,7 @@ export default function ParticipantView() {
   const isWordcloudDone = room?.type === 'WORDCLOUD' && wordCount >= limit;
   const isPollOrRankingOrRatingDone = (room?.type === 'POLL' || room?.type === 'RANKING' || room?.type === 'RATING') && submitted;
 
+  // Lock UI if host paused the room manually or if the session timer has expired
   const isLocked = room?.isLocked || isExpired;
 
   if (isLocked) {

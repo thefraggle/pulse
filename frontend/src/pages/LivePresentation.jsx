@@ -272,6 +272,7 @@ export default function LivePresentation() {
               
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
+              {/* Session Timer Control */}
               <button 
                 onClick={() => {
                   if (room.timerEndsAt) {
