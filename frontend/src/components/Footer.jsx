@@ -10,7 +10,9 @@ export default function Footer({ showAdminLink = false }) {
 
   return (
     <footer className="mt-auto py-6 w-full flex items-center justify-center gap-3 text-xs">
-      <span className="text-white/30">{versionStr}</span>
+      <a href="https://github.com/thefraggle/pulse" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/60 transition-colors">
+        {versionStr}
+      </a>
       <span className="text-white/10">·</span>
       <span className="text-white/30">© 2026 Daniel Notthoff</span>
       
