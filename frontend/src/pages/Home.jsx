@@ -40,7 +40,7 @@ export default function Home() {
           <h1 className="text-5xl font-extrabold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
             pulse
           </h1>
-          <p className="text-white/50 text-sm">Interactive Live Sessions</p>
+          <p className="text-white/50 text-sm">Feel the Pulse</p>
         </div>
 
         <form onSubmit={handleJoin} className="glass-card p-8 flex flex-col gap-4">
