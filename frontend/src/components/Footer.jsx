@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom';
-import versionData from '../version.json';
+import pkg from '../../package.json';
 
 export default function Footer({ showAdminLink = false }) {
   const hasToken = !!localStorage.getItem('pulse_token');
-  const commitCount = versionData.commitCount || '0';
-  const versionStr = `Pulse v0.${commitCount}`;
+  const versionStr = `Pulse v${pkg.version}`;
 
   const impressumUrl = import.meta.env.VITE_IMPRESSUM_URL;
   const privacyUrl = import.meta.env.VITE_PRIVACY_POLICY_URL;
