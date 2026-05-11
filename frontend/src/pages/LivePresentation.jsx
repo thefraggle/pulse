@@ -276,9 +276,9 @@ export default function LivePresentation() {
                   if (room.timerEndsAt) {
                     socket.emit('clearTimer', { code });
                   } else {
-                    const minStr = window.prompt("Timer duration in minutes:", "2");
+                    const minStr = window.prompt("Timer duration in minutes (e.g. 2 or 0.5):", "2");
                     if (minStr !== null) {
-                      const minutes = parseInt(minStr, 10);
+                      const minutes = parseFloat(minStr.replace(',', '.'));
                       if (!isNaN(minutes) && minutes > 0) {
                         socket.emit('startTimer', { code, minutes });
                       }
