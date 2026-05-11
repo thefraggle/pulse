@@ -233,6 +233,8 @@ export default function LivePresentation() {
     };
   }, [code, navigate]);
 
+  const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
+  
   if (loading || !room) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   const totalVotes = room.type === 'POLL' ? (room.options?.reduce((acc, curr) => acc + curr.votes, 0) || 0) : 0;
@@ -241,7 +243,6 @@ export default function LivePresentation() {
     ? (room.words?.map(w => ({ id: w.id, text: w.text, value: w.count })) || [])
     : [];
 
-  const { formattedTime, isExpired } = useCountdown(room.timerEndsAt);
   const isLocked = room.isLocked || isExpired;
 
   return (

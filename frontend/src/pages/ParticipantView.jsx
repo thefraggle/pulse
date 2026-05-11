@@ -69,6 +69,8 @@ export default function ParticipantView() {
     };
   }, [code, navigate]);
 
+  const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
+
   const handleVote = (optionId) => {
     socket.emit('submitVote', { code, optionId });
     localStorage.setItem(`pulse_voted_${code}`, 'true');
@@ -138,7 +140,6 @@ export default function ParticipantView() {
   const isWordcloudDone = room?.type === 'WORDCLOUD' && wordCount >= limit;
   const isPollOrRankingOrRatingDone = (room?.type === 'POLL' || room?.type === 'RANKING' || room?.type === 'RATING') && submitted;
 
-  const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
   const isLocked = room?.isLocked || isExpired;
 
   if (isLocked) {
