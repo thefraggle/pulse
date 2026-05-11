@@ -30,17 +30,25 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Watermark */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        <img src="/favicon.png" alt="" className="w-[120vw] md:w-[80vw] max-w-[1000px] opacity-[0.02] grayscale blur-sm" />
+      </div>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-extrabold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-            Pulse
-          </h1>
-          <p className="text-white/50 text-sm">Feel the Pulse</p>
+        <div className="flex items-center justify-center gap-5 mb-10">
+          <img src="/favicon.png" alt="Pulse Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+          <div className="text-left">
+            <h1 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400 leading-none">
+              Pulse
+            </h1>
+            <p className="text-white/50 text-sm mt-1">Feel the Pulse</p>
+          </div>
         </div>
 
         <form onSubmit={handleJoin} className="glass-card p-8 flex flex-col gap-4">
