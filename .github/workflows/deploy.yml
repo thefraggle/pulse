@@ -1,0 +1,23 @@
+name: Deploy Pulse
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+          script: |
+            cd /home/thefraggle/server-setup/pulse
+            git fetch origin main
+            git reset --hard origin/main
+            cd ..
+            docker compose up -d --build pulse-backend pulse-frontend

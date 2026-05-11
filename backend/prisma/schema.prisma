@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite is used for simplicity and ephemeral session data.
+  // For larger production setups, change provider to "postgresql".
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  type      String   // "WORDCLOUD", "POLL", "QNA", "OPEN_ENDED", "RANKING", "RATING"
+  question  String?  // Optional question/title for the session
+  createdAt DateTime @default(now())
+  
+  // Host Controls & Limits
+  isLocked  Boolean  @default(false)
+  isHidden  Boolean  @default(false)
+  wordLimit Int      @default(4)
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  
+  options     PollOption[]
+  words       Word[]
+  qnaMessages QnaMessage[]
+  openAnswers OpenAnswer[]
+}
+
+model PollOption {
+  id          String @id @default(uuid())
+  text        String
+  votes       Int    @default(0) // used for POLL and RANKING
+  ratingTotal Int    @default(0) // used for RATING
+  ratingCount Int    @default(0) // used for RATING
+  room        Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId      String
+}
+
+model Word {
+  id      String @id @default(uuid())
+  text    String
+  count   Int    @default(1)
+  room    Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId  String
+}
+
+model QnaMessage {
+  id        String   @id @default(uuid())
+  text      String
+  upvotes   Int      @default(0)
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+}
+
+model OpenAnswer {
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("USER") // "SUPERADMIN" or "USER"
+  createdAt    DateTime @default(now())
+  rooms        Room[]
+}

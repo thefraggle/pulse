@@ -1,0 +1,12 @@
+node_modules
+.env
+dist
+build
+.antigravity
+.DS_Store
+*.db
+*.db-journal
+frontend/node_modules
+backend/node_modules
+frontend/public/impressum.html
+frontend/public/datenschutz.html
