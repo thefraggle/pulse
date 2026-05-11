@@ -248,7 +248,7 @@ export default function ParticipantView() {
 
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md">
         
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 mt-12">
           <h1 className="text-3xl font-bold mb-2">{getTitle()}</h1>
           <p className="text-white/60">{getSubtitle()}</p>
         </div>
