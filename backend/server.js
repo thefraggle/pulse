@@ -247,6 +247,14 @@ app.get('/api/rooms/:code', async (req, res) => {
   res.json(room);
 });
 
+// Timer Check Helper
+const checkTimer = (room) => {
+  if (room.timerEndsAt && new Date() > new Date(room.timerEndsAt)) {
+    return true; // Timer is expired
+  }
+  return false;
+};
+
 // --- SOCKET.IO ---
 
 io.on('connection', (socket) => {
@@ -299,6 +307,37 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('startTimer', async ({ code, minutes }) => {
+    try {
+      const room = await prisma.room.findUnique({ where: { code } });
+      if (!room) return;
+      const endsAt = new Date(Date.now() + minutes * 60000);
+      await prisma.room.update({
+        where: { code },
+        data: { timerEndsAt: endsAt }
+      });
+      const updatedRoom = await getFullRoom(code);
+      if (updatedRoom) io.to(code).emit('roomUpdated', updatedRoom);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  socket.on('clearTimer', async ({ code }) => {
+    try {
+      const room = await prisma.room.findUnique({ where: { code } });
+      if (!room) return;
+      await prisma.room.update({
+        where: { code },
+        data: { timerEndsAt: null, isLocked: false }
+      });
+      const updatedRoom = await getFullRoom(code);
+      if (updatedRoom) io.to(code).emit('roomUpdated', updatedRoom);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   socket.on('resetRoom', async ({ code }) => {
     try {
       const room = await prisma.room.findUnique({ where: { code } });
@@ -322,6 +361,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitVote', async ({ code, optionId }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       await prisma.pollOption.update({
         where: { id: optionId },
         data: { votes: { increment: 1 } }
@@ -335,6 +377,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitWord', async ({ code, text, roomId }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
 
@@ -374,6 +419,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitQna', async ({ code, text, roomId }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
       await prisma.qnaMessage.create({ data: { text: sanitizedText, roomId } });
@@ -411,6 +459,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitOpenAnswer', async ({ code, text, roomId }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
       await prisma.openAnswer.create({ data: { text: sanitizedText, roomId } });
@@ -435,6 +486,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitRanking', async ({ code, optionIds }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       // optionIds is an array of IDs ordered from 1st to last.
       // points = N for 1st, N-1 for 2nd, etc.
       const N = optionIds.length;
@@ -453,6 +507,9 @@ io.on('connection', (socket) => {
 
   socket.on('submitRating', async ({ code, ratings }) => {
     try {
+      const currentRoom = await prisma.room.findUnique({ where: { code } });
+      if (!currentRoom || checkTimer(currentRoom)) return;
+
       // ratings is an object: { [optionId]: starValue }
       for (const [optionId, starValue] of Object.entries(ratings)) {
         await prisma.pollOption.update({

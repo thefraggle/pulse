@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, Reorder } from 'framer-motion';
 import { io } from 'socket.io-client';
 import Footer from '../components/Footer';
+import useCountdown from '../hooks/useCountdown';
 
 const socket = io(import.meta.env.VITE_API_URL || '');
 
@@ -137,7 +138,10 @@ export default function ParticipantView() {
   const isWordcloudDone = room?.type === 'WORDCLOUD' && wordCount >= limit;
   const isPollOrRankingOrRatingDone = (room?.type === 'POLL' || room?.type === 'RANKING' || room?.type === 'RATING') && submitted;
 
-  if (room?.isLocked) {
+  const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
+  const isLocked = room?.isLocked || isExpired;
+
+  if (isLocked) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card p-10 text-center max-w-md w-full">
@@ -230,7 +234,17 @@ export default function ParticipantView() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+      
+      {room?.timerEndsAt && (
+        <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/5 rounded-full px-3 py-1 border border-white/10 text-sm font-mono font-bold text-white z-50">
+          <svg className={`w-4 h-4 ${isExpired ? 'text-red-400' : 'text-indigo-400'} animate-pulse`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className={isExpired ? 'text-red-400' : ''}>{formattedTime}</span>
+        </div>
+      )}
+
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md">
         
         <div className="text-center mb-8">

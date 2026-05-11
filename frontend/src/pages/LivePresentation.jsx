@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelL
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import Footer from '../components/Footer';
+import useCountdown from '../hooks/useCountdown';
 
 const socket = io(import.meta.env.VITE_API_URL || '');
 
@@ -240,6 +241,9 @@ export default function LivePresentation() {
     ? (room.words?.map(w => ({ id: w.id, text: w.text, value: w.count })) || [])
     : [];
 
+  const { formattedTime, isExpired } = useCountdown(room.timerEndsAt);
+  const isLocked = room.isLocked || isExpired;
+
   return (
     <div className="min-h-screen flex flex-col p-6">
       <div className="flex justify-between items-start mb-8">
@@ -254,16 +258,40 @@ export default function LivePresentation() {
             <div className="flex items-center gap-1 bg-white/5 px-2 py-1.5 rounded-lg border border-white/10">
               <button 
                 onClick={() => socket.emit('toggleRoomLock', { code })} 
-                className={`p-1.5 rounded-md transition-colors ${room.isLocked ? 'text-yellow-400 bg-yellow-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-                title={room.isLocked ? 'Open poll' : 'Pause poll'}
+                className={`p-1.5 rounded-md transition-colors ${isLocked ? 'text-yellow-400 bg-yellow-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                title={isLocked ? 'Open poll' : 'Pause poll'}
               >
-                {room.isLocked ? (
+                {isLocked ? (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 ) : (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 )}
               </button>
               
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              <button 
+                onClick={() => {
+                  if (room.timerEndsAt) {
+                    socket.emit('clearTimer', { code });
+                  } else {
+                    const minStr = window.prompt("Timer Dauer in Minuten:", "2");
+                    if (minStr !== null) {
+                      const minutes = parseInt(minStr, 10);
+                      if (!isNaN(minutes) && minutes > 0) {
+                        socket.emit('startTimer', { code, minutes });
+                      }
+                    }
+                  }
+                }} 
+                className={`p-1.5 rounded-md transition-colors ${room.timerEndsAt ? 'text-indigo-400 bg-indigo-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                title={room.timerEndsAt ? 'Clear Timer' : 'Set Timer'}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
               <button 
@@ -318,6 +346,15 @@ export default function LivePresentation() {
           </div>
         )}
       </div>
+
+      {room.timerEndsAt && (
+        <div className="absolute top-6 right-6 flex items-center gap-2 glass-card px-4 py-2 text-2xl font-mono font-bold text-white z-50">
+          <svg className={`w-6 h-6 ${isExpired ? 'text-red-400' : 'text-indigo-400'} animate-pulse`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className={isExpired ? 'text-red-400' : ''}>{formattedTime}</span>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto">
         <h2 className="text-4xl font-bold mb-12 text-center relative z-10">
