@@ -33,7 +33,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <img src="/favicon.png" alt="" className="w-[120vw] md:w-[80vw] max-w-[1000px] opacity-[0.02] grayscale blur-sm" />
+        <img src="/favicon.png" alt="" className="w-[160vw] md:w-[90vw] max-w-[1200px] opacity-[0.08] mix-blend-screen blur-[2px]" />
       </div>
 
       <motion.div 
@@ -42,7 +42,7 @@ export default function Home() {
         className="w-full max-w-md relative z-10"
       >
         <div className="flex items-center justify-center gap-5 mb-10">
-          <img src="/favicon.png" alt="Pulse Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+          <img src="/favicon.png" alt="Pulse Logo" className="w-16 h-16 object-contain rounded-2xl drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
           <div className="text-left">
             <h1 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400 leading-none">
               Pulse
