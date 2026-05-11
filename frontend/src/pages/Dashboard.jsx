@@ -6,7 +6,7 @@ import Footer from '../components/Footer';
 export default function Dashboard() {
   const [rooms, setRooms] = useState([]);
   const [users, setUsers] = useState([]);
-  const [type, setTypee] = useState('WORDCLOUD');
+  const [type, setType] = useState('WORDCLOUD');
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [wordLimit, setWordLimit] = useState(4);
@@ -78,7 +78,7 @@ export default function Dashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
         method: 'POST',
         headers: { 
-          'Content-Typee': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
@@ -114,7 +114,7 @@ export default function Dashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
         method: 'POST',
         headers: { 
-          'Content-Typee': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
@@ -144,7 +144,7 @@ export default function Dashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users`, {
         method: 'POST',
         headers: { 
-          'Content-Typee': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ username: newUsername })
@@ -190,7 +190,7 @@ export default function Dashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users/password`, {
         method: 'PUT',
         headers: { 
-          'Content-Typee': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ oldPassword, newPassword })
@@ -269,7 +269,7 @@ export default function Dashboard() {
                 <label className="block text-sm text-white/70 mb-2">Type</label>
                 <select 
                   value={type} 
-                  onChange={(e) => setTypee(e.target.value)}
+                  onChange={(e) => setType(e.target.value)}
                   className="glass-input w-full bg-black/20"
                 >
                   <option value="WORDCLOUD">Wordcloud</option>
