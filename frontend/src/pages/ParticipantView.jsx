@@ -69,7 +69,8 @@ export default function ParticipantView() {
     };
   }, [code, navigate]);
 
-  const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
+  const { timeLeft, formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
+  const isWarning = timeLeft !== null && timeLeft <= 20;
 
   const handleVote = (optionId) => {
     socket.emit('submitVote', { code, optionId });
@@ -239,10 +240,10 @@ export default function ParticipantView() {
       
       {room?.timerEndsAt && (
         <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/5 rounded-full px-3 py-1 border border-white/10 text-sm font-mono font-bold text-white z-50">
-          <svg className={`w-4 h-4 ${isExpired ? 'text-red-400' : 'text-indigo-400'} animate-pulse`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-4 h-4 ${isWarning ? 'text-red-400 animate-pulse' : 'text-indigo-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className={isExpired ? 'text-red-400' : ''}>{formattedTime}</span>
+          <span className={isWarning ? 'text-red-400' : ''}>{formattedTime}</span>
         </div>
       )}
 
