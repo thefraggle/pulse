@@ -14,7 +14,9 @@ export default function Footer({ showAdminLink = false }) {
         {versionStr}
       </a>
       <span className="text-white/10">·</span>
-      <span className="text-white/30">© 2026 Daniel Notthoff</span>
+      <a href="https://notthoff.org" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/60 transition-colors">
+        © 2026 Daniel Notthoff
+      </a>
       
       {impressumUrl && (
         <>
