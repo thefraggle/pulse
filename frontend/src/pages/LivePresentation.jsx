@@ -349,7 +349,7 @@ export default function LivePresentation() {
       </div>
 
       {room.timerEndsAt && (
-        <div className="absolute top-6 right-6 flex items-center gap-2 glass-card px-4 py-2 text-2xl font-mono font-bold text-white z-50">
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 glass-card px-4 py-2 text-2xl font-mono font-bold text-white z-50">
           <svg className={`w-6 h-6 ${isExpired ? 'text-red-400' : 'text-indigo-400'} animate-pulse`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
