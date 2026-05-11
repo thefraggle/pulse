@@ -200,7 +200,7 @@ export default function LivePresentation() {
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showJoin, setShowJoin] = useState(false);
+  const [showJoin, setShowJoin] = useState(true);
   
   const isAdmin = !!localStorage.getItem('pulse_token');
 
