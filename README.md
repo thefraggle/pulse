@@ -1,8 +1,6 @@
-# Pulse - Interactive Live Sessions
+# Pulse - Feel the Pulse
 
 Pulse is a lightweight, self-hosted web application for running interactive live sessions like polls, Q&A, rankings, ratings, and wordclouds. It's built for speed, real-time interactivity, and privacy.
-
-![Pulse Dashboard](docs/screenshot.jpg) <!-- Optional: Add a screenshot later -->
 
 ## Features
 - **Real-Time Synchronization:** Uses Socket.io to push results instantly to all connected screens.
