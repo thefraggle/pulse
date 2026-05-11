@@ -34,7 +34,7 @@ export default function ParticipantView() {
 
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/rooms/${code}`)
       .then(res => {
-        if (!res.ok) throw new Error('Raum nicht gefunden');
+        if (!res.ok) throw new Error('Room not found');
         return res.json();
       })
       .then(data => {
@@ -82,7 +82,7 @@ export default function ParticipantView() {
     const newCount = wordCount + 1;
     setWordCount(newCount);
     localStorage.setItem(`pulse_words_${code}`, newCount.toString());
-    setToast('Wort gesendet!');
+    setToast('Word submitted!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
@@ -91,7 +91,7 @@ export default function ParticipantView() {
     e.preventDefault();
     if (!word.trim()) return;
     socket.emit('submitQna', { code, text: word.trim(), roomId: room.id });
-    setToast('Frage gesendet!');
+    setToast('Question submitted!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
@@ -100,7 +100,7 @@ export default function ParticipantView() {
     e.preventDefault();
     if (!word.trim()) return;
     socket.emit('submitOpenAnswer', { code, text: word.trim(), roomId: room.id });
-    setToast('Antwort gesendet!');
+    setToast('Answer submitted!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
@@ -129,7 +129,7 @@ export default function ParticipantView() {
     setSubmitted(true);
   };
 
-  if (loading) return <div className="min-h-screen flex flex-col items-center justify-center"><span>Lade...</span><Footer /></div>;
+  if (loading) return <div className="min-h-screen flex flex-col items-center justify-center"><span>Loading...</span><Footer /></div>;
   if (error) return <div className="min-h-screen flex flex-col items-center justify-center text-red-400"><span>{error}</span><Footer /></div>;
 
   // Determine if user has reached limit and should see the "Danke" view
@@ -146,14 +146,14 @@ export default function ParticipantView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Session pausiert</h2>
-          <p className="text-white/60 mb-8">Der Moderator hat die Abstimmung vorübergehend geschlossen.</p>
+          <h2 className="text-2xl font-bold mb-2">Session paused</h2>
+          <p className="text-white/60 mb-8">The moderator has temporarily closed the voting.</p>
           <div className="flex flex-col gap-4 mt-2">
             <Link to={`/live/${code}`} className="glass-button w-full py-3 flex items-center justify-center gap-2 text-indigo-300 hover:text-indigo-200">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Live-Ergebnis ansehen
+              View Live Results
             </Link>
           </div>
         </motion.div>
@@ -171,11 +171,11 @@ export default function ParticipantView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Danke!</h2>
-          <p className="text-white/60 mb-8">Deine Antwort wurde gespeichert.</p>
+          <h2 className="text-2xl font-bold mb-2">Thank you!</h2>
+          <p className="text-white/60 mb-8">Your answer has been submitted.</p>
           
           <div className="p-4 bg-white/5 rounded-xl border border-white/10 mb-6">
-            <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Join Code für andere</p>
+            <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Join Code for others</p>
             <p className="text-3xl font-mono tracking-widest font-bold text-indigo-400">{code}</p>
           </div>
 
@@ -187,7 +187,7 @@ export default function ParticipantView() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Live-Ergebnis ansehen
+              View Live Results
             </Link>
             
             <Link 
@@ -197,7 +197,7 @@ export default function ParticipantView() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Zurück zur Startseite
+              Back to Home
             </Link>
           </div>
         </motion.div>
@@ -209,23 +209,23 @@ export default function ParticipantView() {
   const getTitle = () => {
     if (room?.question) return room.question;
     switch (room?.type) {
-      case 'POLL': return 'Abstimmung';
+      case 'POLL': return 'Poll';
       case 'QNA': return 'Q&A';
       case 'OPEN_ENDED': return 'Brainstorming';
-      case 'RANKING': return 'Priorisierung';
-      case 'RATING': return 'Bewertung';
+      case 'RANKING': return 'Ranking';
+      case 'RATING': return 'Rating';
       default: return 'Wordcloud';
     }
   };
 
   const getSubtitle = () => {
     switch (room?.type) {
-      case 'POLL': return 'Bitte wähle eine Option';
-      case 'QNA': return 'Stelle eine Frage oder vote für andere';
-      case 'OPEN_ENDED': return 'Teile deine Ideen';
-      case 'RANKING': return 'Sortiere per Drag & Drop';
-      case 'RATING': return 'Vergib Sterne für die Kategorien';
-      default: return 'Bitte gib deine Antwort ein';
+      case 'POLL': return 'Please select an option';
+      case 'QNA': return 'Ask a question or vote for others';
+      case 'OPEN_ENDED': return 'Share your ideas';
+      case 'RANKING': return 'Sort by drag & drop';
+      case 'RATING': return 'Give stars for the categories';
+      default: return 'Please enter your answer';
     }
   };
 
@@ -268,7 +268,7 @@ export default function ParticipantView() {
               ))}
             </Reorder.Group>
             <button onClick={handleRankingSubmit} className="glow-button w-full py-3 mt-4">
-              Ranking absenden
+              Submit Ranking
             </button>
           </div>
         )}
@@ -277,7 +277,7 @@ export default function ParticipantView() {
         {room?.type === 'RATING' && (
           <div className="flex flex-col gap-6">
             {room?.options?.map(opt => {
-              const isSingleDefault = room?.options?.length === 1 && opt.text === 'Gesamtbewertung';
+              const isSingleDefault = room?.options?.length === 1 && (opt.text === 'Gesamtbewertung' || opt.text === 'Overall Rating');
               return (
                 <div key={opt.id} className="glass-card w-full p-6 text-center">
                   {!isSingleDefault && <h3 className="text-xl mb-4">{opt.text}</h3>}
@@ -302,7 +302,7 @@ export default function ParticipantView() {
               className="glow-button w-full py-3 mt-2"
               disabled={Object.keys(ratings).length !== (room?.options?.length || 0)}
             >
-              Bewertung absenden
+              Submit Rating
             </button>
           </div>
         )}
@@ -321,13 +321,13 @@ export default function ParticipantView() {
               type="text"
               value={word}
               onChange={(e) => setWord(e.target.value)}
-              placeholder={room?.type === 'QNA' ? "Deine Frage..." : "Ein Wort oder kurzer Satz..."}
+              placeholder={room?.type === 'QNA' ? "Your question..." : "A word or short sentence..."}
               className="glass-input w-full text-lg"
               autoFocus
               required
             />
             <button type="submit" className="glow-button w-full py-3">
-              {room?.type === 'QNA' ? 'Frage stellen' : 'Absenden'}
+              {room?.type === 'QNA' ? 'Ask question' : 'Submit'}
             </button>
             {toast && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-green-400 text-center font-medium mt-2">
@@ -368,7 +368,7 @@ export default function ParticipantView() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            Live-Ergebnis ansehen
+            View Live Results
           </Link>
           
           <Link 
@@ -378,7 +378,7 @@ export default function ParticipantView() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Zurück zur Startseite
+            Back to Home
           </Link>
         </div>
 

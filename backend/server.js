@@ -103,7 +103,7 @@ app.post('/api/admin/rooms', authenticateToken, async (req, res) => {
   try {
     let finalOptions = options || [];
     if (type === 'RATING' && finalOptions.length === 0) {
-      finalOptions = ['Gesamtbewertung'];
+      finalOptions = ['Overall Rating'];
     }
 
     let code = generateCode();
