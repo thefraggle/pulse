@@ -14,7 +14,7 @@ The frontend for Pulse is built using **React** with **Vite**. It provides three
    ```bash
    cp .env.example .env
    ```
-   Ensure `VITE_API_URL` and `VITE_WS_URL` point to your backend. In production (via Docker and Nginx), these can usually be omitted or set to `/` as Nginx handles the reverse proxy routing.
+   Ensure `VITE_API_URL` points to your backend. In production (via Docker and Nginx), these can usually be omitted or set to `/` as Nginx handles the reverse proxy routing.
 
 3. **Development Server:**
    ```bash
