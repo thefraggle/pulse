@@ -15,6 +15,8 @@ Pulse is a 100% free, lightweight, and self-hosted web application for running i
   * Q&A (Audience questions with upvotes)
   * Open Ended (Brainstorming)
 * **Session Timer:** Hosts can set a live countdown that automatically locks the session when time is up.
+* **Data Export:** Download session results instantly as CSV files.
+* **Interactive Onboarding:** Built-in product tours guide new hosts through the dashboard and live views.
 * **Multi-Tenant Architecture:** Secure dashboard for multiple users/teachers to manage their own independent sessions.
 * **Glassmorphism UI:** Modern, slick, and highly responsive UI built with Tailwind CSS and Framer Motion.
 
