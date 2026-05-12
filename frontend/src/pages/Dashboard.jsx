@@ -35,15 +35,20 @@ export default function Dashboard() {
   }, [navigate, token, role]);
 
   useEffect(() => {
+    if (!token) return;
+    let timer;
     if (activeTab === 'rooms') {
-      setTimeout(() => startDashboardTour(), 500);
+      timer = setTimeout(() => startDashboardTour(), 500);
     }
     const handleStartTour = () => {
       if (activeTab === 'rooms') startDashboardTour(true);
     };
     window.addEventListener('start-tour', handleStartTour);
-    return () => window.removeEventListener('start-tour', handleStartTour);
-  }, [activeTab]);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('start-tour', handleStartTour);
+    };
+  }, [activeTab, token]);
 
   const fetchRooms = async () => {
     try {
@@ -51,7 +56,9 @@ export default function Dashboard() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 401 || res.status === 403) {
-        localStorage.clear();
+        localStorage.removeItem('pulse_token');
+        localStorage.removeItem('pulse_role');
+        localStorage.removeItem('pulse_username');
         navigate('/login');
         return;
       }
@@ -239,7 +246,9 @@ export default function Dashboard() {
         </div>
         <button 
           onClick={() => {
-            localStorage.clear();
+            localStorage.removeItem('pulse_token');
+            localStorage.removeItem('pulse_role');
+            localStorage.removeItem('pulse_username');
             navigate('/login');
           }}
           className="text-white/50 hover:text-white"
