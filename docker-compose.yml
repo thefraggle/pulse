@@ -1,14 +1,14 @@
 services:
-  frontend:
+  pulse-frontend:
     build:
       context: ./frontend
     ports:
       - "80:80"
     restart: always
     depends_on:
-      - backend
+      - pulse-backend
 
-  backend:
+  pulse-backend:
     build:
       context: ./backend
     env_file:
