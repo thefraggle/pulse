@@ -70,8 +70,8 @@ Open your browser and navigate to `http://localhost` (or your server's IP/Domain
 
 If you want to host Pulse publicly, you might want to link your own Legal Notice (Impressum) and Privacy Policy. Pulse allows you to inject these links dynamically without altering the code.
 
-1. Create a `public/impressum.html` inside the `frontend/` directory (These files are ignored by git so your personal data stays private).
-2. Set `VITE_IMPRESSUM_URL=/impressum.html` in your `frontend/.env`.
+1. Create a `public/impressum.html` and `public/datenschutz.html` inside the `frontend/` directory (These files are ignored by git so your personal data stays private).
+2. Set `VITE_IMPRESSUM_URL=/impressum.html` and `VITE_PRIVACY_POLICY_URL=/datenschutz.html` in your `frontend/.env`.
 3. Rebuild your docker container. The links will now appear in the footer.
 
 ## License
