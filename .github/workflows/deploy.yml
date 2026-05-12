@@ -16,7 +16,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
-            cd /home/thefraggle/server-setup/pulse
+            cd ${{ secrets.SERVER_DIR }}
             git fetch origin main
             git reset --hard origin/main
             cd ..
