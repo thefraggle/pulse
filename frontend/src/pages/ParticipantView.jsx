@@ -86,7 +86,7 @@ export default function ParticipantView() {
     const newCount = wordCount + 1;
     setWordCount(newCount);
     localStorage.setItem(`pulse_words_${code}`, newCount.toString());
-    setToast('Word submitted!');
+    setToast('Thanks, it has been saved!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
@@ -95,7 +95,7 @@ export default function ParticipantView() {
     e.preventDefault();
     if (!word.trim()) return;
     socket.emit('submitQna', { code, text: word.trim(), roomId: room.id });
-    setToast('Question submitted!');
+    setToast('Thanks, it has been saved!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
@@ -104,7 +104,7 @@ export default function ParticipantView() {
     e.preventDefault();
     if (!word.trim()) return;
     socket.emit('submitOpenAnswer', { code, text: word.trim(), roomId: room.id });
-    setToast('Answer submitted!');
+    setToast('Thanks, it has been saved!');
     setWord('');
     setTimeout(() => setToast(''), 3000);
   };
