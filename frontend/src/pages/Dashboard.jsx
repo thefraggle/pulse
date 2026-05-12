@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import { exportRoomToCSV } from '../utils/exportUtils';
+import { startDashboardTour } from '../utils/tourUtils';
 
 export default function Dashboard() {
   const [rooms, setRooms] = useState([]);
@@ -32,6 +33,17 @@ export default function Dashboard() {
     fetchRooms();
     if (role === 'SUPERADMIN') fetchUsers();
   }, [navigate, token, role]);
+
+  useEffect(() => {
+    if (activeTab === 'rooms') {
+      setTimeout(() => startDashboardTour(), 500);
+    }
+    const handleStartTour = () => {
+      if (activeTab === 'rooms') startDashboardTour(true);
+    };
+    window.addEventListener('start-tour', handleStartTour);
+    return () => window.removeEventListener('start-tour', handleStartTour);
+  }, [activeTab]);
 
   const fetchRooms = async () => {
     try {
@@ -263,7 +275,7 @@ export default function Dashboard() {
 
       {activeTab === 'rooms' && (
         <div className="grid md:grid-cols-[4fr_7fr] gap-8">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6" id="tour-create-session">
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Create New Session</h2>
             <form onSubmit={handleCreateRoom} className="flex flex-col gap-4">
               <div>
@@ -340,7 +352,7 @@ export default function Dashboard() {
             </form>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6" id="tour-active-sessions">
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Active Sessions</h2>
             {!rooms || rooms.length === 0 ? (
               <p className="text-white/40 italic">No active sessions</p>

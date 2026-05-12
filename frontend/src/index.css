@@ -33,3 +33,40 @@
     @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all;
   }
 }
+
+/* driver.js dark theme overrides */
+.driverjs-theme-pulse.driver-popover {
+  background-color: #1a1c29 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+.driverjs-theme-pulse .driver-popover-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 1.1rem !important;
+  margin-bottom: 8px !important;
+}
+.driverjs-theme-pulse .driver-popover-description {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 0.95rem !important;
+}
+.driverjs-theme-pulse .driver-popover-footer button {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border: none !important;
+  text-shadow: none !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+}
+.driverjs-theme-pulse .driver-popover-footer button:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+.driverjs-theme-pulse .driver-popover-footer .driver-popover-next-btn {
+  background-color: #6366f1 !important;
+}
+.driverjs-theme-pulse .driver-popover-footer .driver-popover-next-btn:hover {
+  background-color: #4f46e5 !important;
+}
+/* Basic arrow override (driver.js creates arrow differently based on popover position, this tries to cover it broadly if possible, or we let the default color blend in) */

@@ -7,6 +7,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import Footer from '../components/Footer';
 import useCountdown from '../hooks/useCountdown';
 import { exportRoomToCSV } from '../utils/exportUtils';
+import { startLiveTour } from '../utils/tourUtils';
 
 const socket = io(import.meta.env.VITE_API_URL || '');
 
@@ -234,6 +235,17 @@ export default function LivePresentation() {
     };
   }, [code, navigate]);
 
+  useEffect(() => {
+    if (isAdmin) {
+      setTimeout(() => startLiveTour(), 500);
+    }
+    const handleStartTour = () => {
+      if (isAdmin) startLiveTour(true);
+    };
+    window.addEventListener('start-tour', handleStartTour);
+    return () => window.removeEventListener('start-tour', handleStartTour);
+  }, [isAdmin]);
+
   const { timeLeft, formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
   const isWarning = timeLeft !== null && timeLeft <= 20;
   
@@ -258,7 +270,7 @@ export default function LivePresentation() {
           )}
           
           {isAdmin && (
-            <div className="flex items-center gap-1 bg-white/5 px-2 py-1.5 rounded-lg border border-white/10">
+            <div className="flex items-center gap-1 bg-white/5 px-2 py-1.5 rounded-lg border border-white/10" id="tour-admin-controls">
               <button 
                 onClick={() => socket.emit('toggleRoomLock', { code })} 
                 className={`p-1.5 rounded-md transition-colors ${isLocked ? 'text-yellow-400 bg-yellow-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
@@ -353,7 +365,7 @@ export default function LivePresentation() {
           )}
         </div>
         {showJoin && (
-          <div className="glass-card px-8 py-4 flex items-center gap-6">
+          <div className="glass-card px-8 py-4 flex items-center gap-6" id="tour-join-info">
             <div className="text-center">
               <p className="text-sm text-white/60 mb-1 uppercase tracking-widest font-semibold">Join via {window.location.host}</p>
               <p className="text-5xl font-mono tracking-widest font-bold text-indigo-400">{code}</p>
