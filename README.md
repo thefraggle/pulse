@@ -52,7 +52,7 @@ docker compose up -d --build
 ### 4. Access the App
 Open your browser and navigate to `http://localhost` (or your server's IP/Domain).
 - **Public View:** `http://localhost/`
-- **Admin Dashboard:** `http://localhost/dashboard` (Login using `admin` and your configured `ADMIN_PASSWORD`).
+- **Admin Login:** `http://localhost/login` (Login using `admin` and your configured `ADMIN_PASSWORD`).
 
 ## Legal & Privacy Notice Customization (White-Labeling)
 If you want to host Pulse publicly, you might want to link your own Legal Notice (Impressum) and Privacy Policy. Pulse allows you to inject these links dynamically without altering the code.
