@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
+import { exportRoomToCSV } from '../utils/exportUtils';
 
 export default function Dashboard() {
   const [rooms, setRooms] = useState([]);
@@ -364,6 +365,13 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <button onClick={() => exportRoomToCSV(r)} className="p-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 rounded transition-colors" title="Export to CSV">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                      </button>
                       <button onClick={() => handleCloneRoom(r)} className="p-2 bg-white/10 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white" title="Clone session (new code)">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
