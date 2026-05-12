@@ -383,23 +383,42 @@ io.on('connection', (socket) => {
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
 
-      const existing = await prisma.word.findFirst({
-        where: { roomId, text: { equals: sanitizedText } }
-      });
-      
-      if (existing) {
-        await prisma.word.update({
-          where: { id: existing.id },
-          data: { count: { increment: 1 } }
-        });
-      } else {
-        await prisma.word.create({
-          data: { text: sanitizedText, roomId }
-        });
+      const STOP_WORDS = new Set([
+        'der', 'die', 'das', 'und', 'oder', 'mit', 'in', 'an', 'auf', 'für', 'von', 'zu', 'im', 'am', 'um', 'ein', 'eine', 'einer', 'eines', 'einem', 'einen', 'ist', 'sind', 'wie', 'als', 'auch', 'dass', 'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr',
+        'the', 'and', 'or', 'with', 'in', 'on', 'at', 'for', 'of', 'to', 'a', 'an', 'is', 'are', 'bei', 'aus', 'nach', 'vor', 'über', 'unter'
+      ]);
+
+      const wordsArray = sanitizedText.split(/\s+/);
+      let addedCount = 0;
+
+      for (let w of wordsArray) {
+        let cleanWord = w.replace(/^[.,;:!?()"'<>-]+|[.,;:!?()"'<>-]+$/g, '');
+        if (cleanWord.length > 1 && !STOP_WORDS.has(cleanWord.toLowerCase())) {
+          // Capitalize first letter, lowercase the rest for unified matching (case-insensitive deduplication)
+          cleanWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
+
+          const existing = await prisma.word.findFirst({
+            where: { roomId, text: cleanWord }
+          });
+          
+          if (existing) {
+            await prisma.word.update({
+              where: { id: existing.id },
+              data: { count: { increment: 1 } }
+            });
+          } else {
+            await prisma.word.create({
+              data: { text: cleanWord, roomId }
+            });
+          }
+          addedCount++;
+        }
       }
 
-      const room = await getFullRoom(code);
-      if (room) io.to(code).emit('roomUpdated', room);
+      if (addedCount > 0) {
+        const room = await getFullRoom(code);
+        if (room) io.to(code).emit('roomUpdated', room);
+      }
     } catch (e) {
       console.error(e);
     }
