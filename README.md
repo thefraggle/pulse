@@ -11,6 +11,7 @@ Pulse is a lightweight, self-hosted web application for running interactive live
   - Rating (5-Star Scale)
   - Q&A (Audience questions with upvotes)
   - Open Ended (Brainstorming)
+- **Session Timer:** Hosts can set a live countdown that automatically locks the session when time is up.
 - **Multi-Tenant Architecture:** Secure dashboard for multiple users/teachers to manage their own independent sessions.
 - **Glassmorphism UI:** Modern, slick, and highly responsive UI built with Tailwind CSS and Framer Motion.
 - **Privacy First:** Self-hosted on your own infrastructure. No third-party tracking.
