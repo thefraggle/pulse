@@ -302,7 +302,7 @@ export default function Dashboard() {
 
               {type === 'WORDCLOUD' && (
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">Words per participant</label>
+                  <label className="block text-sm text-white/70 mb-2">Submissions per participant</label>
                   <input
                     type="number"
                     min="1"
