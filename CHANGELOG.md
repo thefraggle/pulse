@@ -2,12 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-05-12
+## [1.0.0] - 2026-05-12 - Official Release 🚀
 
-### Added
-- **Session Timer:** Hosts can now set a live countdown during an active session. The timer is displayed in real-time on all screens and automatically locks the session when the time is up.
-- **Multiple Session Types:** Support for Wordcloud, Poll, Ranking, Rating, Q&A, and Open Ended formats.
-- **Real-Time Synchronization:** Fast and reliable live updates using Socket.io.
-- **Multi-Tenant Architecture:** Secure dashboard allowing multiple hosts to manage their independent sessions.
-- **Glassmorphism UI:** Modern, fully responsive user interface built with Tailwind CSS and Framer Motion.
-- **Privacy Controls:** Self-hosted architecture with no third-party tracking, plus support for custom Legal & Privacy Notice links.
+Welcome to the official 1.0.0 release of Pulse! 🎉 
+Pulse is now fully ready for production. It is a lightweight, self-hosted web application designed to make live sessions, presentations, and classrooms highly interactive.
+
+### Key Highlights
+- ⏱️ **Session Timer:** Hosts can now set a live countdown that is perfectly synchronized across all participant screens. Once the time is up, the session automatically locks, preventing further inputs.
+- 📊 **6 Interactive Formats:** Choose between Wordcloud, Poll (Single Choice), Ranking, Rating (5-Star), Q&A, and Open Ended brainstorming.
+- ⚡ **Real-Time Engine:** Powered by Socket.io for instantaneous feedback and zero-lag interactions.
+- 🔐 **Multi-Tenant Ready:** A secure dashboard that allows multiple hosts/teachers to manage their own separate sessions privately.
+- 🎨 **Modern Glassmorphism UI:** Built with Tailwind CSS and Framer Motion for a sleek, responsive, mobile-first experience.
+- 🛡️ **Privacy First:** 100% self-hosted via Docker. No third-party tracking, plus custom Legal & Privacy Notice injections.
