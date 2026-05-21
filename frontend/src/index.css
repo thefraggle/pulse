@@ -5,6 +5,7 @@
   --color-pulse-glass: rgba(255, 255, 255, 0.05);
   --color-pulse-glass-border: rgba(255, 255, 255, 0.1);
   --color-pulse-glow: #6366f1;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
@@ -30,7 +31,7 @@
   }
 
   .glass-input {
-    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all;
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all;
   }
 }
 

@@ -303,7 +303,7 @@ export default function Dashboard() {
                 </select>
                 <div className="text-xs text-white/50 mt-2 bg-white/5 p-2 rounded border border-white/5">
                   {type === 'WORDCLOUD' && 'Collects terms from participants and displays them as a dynamic word cloud. Frequent terms appear larger.'}
-                  {type === 'POLL' && 'Klassische Single-Choice Poll. Die Teilnehmer wählen genau eine der vordefinierten Antworten.'}
+                  {type === 'POLL' && 'Classic single-choice poll. Participants choose exactly one of the predefined answers.'}
                   {type === 'QNA' && 'Participants can submit their own questions and upvote questions from others.'}
                   {type === 'OPEN_ENDED' && 'Collects free-text answers to a question. Ideal for brainstorming or detailed feedback.'}
                   {type === 'RANKING' && 'Participants sort the given options into their preferred order.'}
@@ -498,7 +498,7 @@ export default function Dashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-white/70 mb-2">New Password wiederholen</label>
+                <label className="block text-sm text-white/70 mb-2">Confirm New Password</label>
                 <input
                   type="password"
                   value={newPasswordConfirm}

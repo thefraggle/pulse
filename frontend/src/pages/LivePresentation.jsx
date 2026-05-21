@@ -523,7 +523,7 @@ export default function LivePresentation() {
           <div className="w-full h-[500px] glass-card p-12 flex flex-col justify-center gap-8 overflow-y-auto">
             {room.options?.map(opt => {
               const avg = opt.ratingCount > 0 ? (opt.ratingTotal / opt.ratingCount).toFixed(1) : 0;
-              const isSingleDefault = room.options?.length === 1 && opt.text === 'Gesamtbewertung';
+              const isSingleDefault = room.options?.length === 1 && (opt.text === 'Gesamtbewertung' || opt.text === 'Overall Rating');
               return (
                 <div key={opt.id} className="flex flex-col gap-3">
                   <div className={`flex ${isSingleDefault ? 'justify-end' : 'justify-between'} items-end`}>

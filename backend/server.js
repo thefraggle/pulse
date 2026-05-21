@@ -84,18 +84,23 @@ const filterProfanity = (text) => {
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   
-  if (username === 'admin' && password === ADMIN_PASSWORD) {
-    const token = jwt.sign({ username: 'admin', role: 'SUPERADMIN' }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, role: 'SUPERADMIN', username: 'admin' });
-  }
+  try {
+    if (username === 'admin' && password === ADMIN_PASSWORD) {
+      const token = jwt.sign({ username: 'admin', role: 'SUPERADMIN' }, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ success: true, token, role: 'SUPERADMIN', username: 'admin' });
+    }
 
-  const user = await prisma.user.findUnique({ where: { username } });
-  if (user && await bcrypt.compare(password, user.passwordHash)) {
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, role: user.role, username: user.username });
-  }
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (user && await bcrypt.compare(password, user.passwordHash)) {
+      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ success: true, token, role: user.role, username: user.username });
+    }
 
-  res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: 'Unauthorized' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.post('/api/admin/rooms', authenticateToken, async (req, res) => {
@@ -132,19 +137,24 @@ app.post('/api/admin/rooms', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/admin/rooms', authenticateToken, async (req, res) => {
-  const where = req.user.role === 'SUPERADMIN' ? {} : { userId: req.user.id };
-  const rooms = await prisma.room.findMany({
-    where,
-    include: { 
-      options: true, 
-      words: true, 
-      qnaMessages: { orderBy: { upvotes: 'desc' } }, 
-      openAnswers: { orderBy: { createdAt: 'desc' } },
-      user: true
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-  res.json(rooms);
+  try {
+    const where = req.user.role === 'SUPERADMIN' ? {} : { userId: req.user.id };
+    const rooms = await prisma.room.findMany({
+      where,
+      include: { 
+        options: true, 
+        words: true, 
+        qnaMessages: { orderBy: { upvotes: 'desc' } }, 
+        openAnswers: { orderBy: { createdAt: 'desc' } },
+        user: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(rooms);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.delete('/api/admin/rooms/:id', authenticateToken, async (req, res) => {
@@ -167,11 +177,16 @@ app.delete('/api/admin/rooms/:id', authenticateToken, async (req, res) => {
 // User Management (Admin only)
 app.get('/api/users', authenticateToken, async (req, res) => {
   if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Forbidden' });
-  const users = await prisma.user.findMany({
-    select: { id: true, username: true, role: true, createdAt: true, _count: { select: { rooms: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
-  res.json(users);
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, username: true, role: true, createdAt: true, _count: { select: { rooms: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.post('/api/users', authenticateToken, async (req, res) => {
@@ -234,17 +249,22 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/rooms/:code', async (req, res) => {
-  const room = await prisma.room.findUnique({
-    where: { code: req.params.code.toUpperCase() },
-    include: { 
-      options: true, 
-      words: true, 
-      qnaMessages: { orderBy: { upvotes: 'desc' } }, 
-      openAnswers: { orderBy: { createdAt: 'desc' } } 
-    }
-  });
-  if (!room) return res.status(404).json({ error: 'Room not found' });
-  res.json(room);
+  try {
+    const room = await prisma.room.findUnique({
+      where: { code: req.params.code.toUpperCase() },
+      include: { 
+        options: true, 
+        words: true, 
+        qnaMessages: { orderBy: { upvotes: 'desc' } }, 
+        openAnswers: { orderBy: { createdAt: 'desc' } } 
+      }
+    });
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    res.json(room);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Timer Check Helper
@@ -375,7 +395,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submitWord', async ({ code, text, roomId }) => {
+  socket.on('submitWord', async ({ code, text }) => {
     try {
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
@@ -398,7 +418,7 @@ io.on('connection', (socket) => {
           cleanWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
 
           const existing = await prisma.word.findFirst({
-            where: { roomId, text: cleanWord }
+            where: { roomId: currentRoom.id, text: cleanWord }
           });
           
           if (existing) {
@@ -408,7 +428,7 @@ io.on('connection', (socket) => {
             });
           } else {
             await prisma.word.create({
-              data: { text: cleanWord, roomId }
+              data: { text: cleanWord, roomId: currentRoom.id }
             });
           }
           addedCount++;
@@ -436,14 +456,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submitQna', async ({ code, text, roomId }) => {
+  socket.on('submitQna', async ({ code, text }) => {
     try {
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
-      await prisma.qnaMessage.create({ data: { text: sanitizedText, roomId } });
+      await prisma.qnaMessage.create({ data: { text: sanitizedText, roomId: currentRoom.id } });
       const room = await getFullRoom(code);
       if (room) io.to(code).emit('roomUpdated', room);
     } catch (e) {
@@ -476,14 +496,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submitOpenAnswer', async ({ code, text, roomId }) => {
+  socket.on('submitOpenAnswer', async ({ code, text }) => {
     try {
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
       const sanitizedText = sanitizeInput(text);
       if (!sanitizedText) return;
-      await prisma.openAnswer.create({ data: { text: sanitizedText, roomId } });
+      await prisma.openAnswer.create({ data: { text: sanitizedText, roomId: currentRoom.id } });
       const room = await getFullRoom(code);
       if (room) io.to(code).emit('roomUpdated', room);
     } catch (e) {
