@@ -327,6 +327,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('toggleReactions', async ({ code }) => {
+    try {
+      const current = await prisma.room.findUnique({ where: { code } });
+      if (!current) return;
+      await prisma.room.update({
+        where: { code },
+        data: { reactionsEnabled: !current.reactionsEnabled }
+      });
+      const room = await getFullRoom(code);
+      if (room) io.to(code).emit('roomUpdated', room);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  socket.on('sendReaction', ({ code, emoji }) => {
+    const reactionId = crypto.randomBytes(4).toString('hex');
+    io.to(code).emit('reactionReceived', { emoji, id: reactionId });
+  });
+
   socket.on('startTimer', async ({ code, minutes }) => {
     try {
       const room = await prisma.room.findUnique({ where: { code } });

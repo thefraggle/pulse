@@ -401,6 +401,22 @@ export default function ParticipantView() {
 
       </motion.div>
       <Footer />
+
+      {room?.reactionsEnabled && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 glass-card px-5 py-3 flex gap-4 items-center border border-white/20 shadow-2xl rounded-full bg-[#0d0f1a]/80 backdrop-blur-md">
+          {['👍', '❤️', '🎉', '🔥', '👏'].map(emoji => (
+            <button
+              key={emoji}
+              onClick={() => {
+                socket.emit('sendReaction', { code, emoji });
+              }}
+              className="text-3xl hover:scale-130 active:scale-95 transition-transform p-1 cursor-pointer select-none"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

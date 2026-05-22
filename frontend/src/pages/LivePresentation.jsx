@@ -204,8 +204,17 @@ export default function LivePresentation() {
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showJoin, setShowJoin] = useState(true);
+  const [reactions, setReactions] = useState([]);
   
   const isAdmin = !!localStorage.getItem('pulse_token');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setReactions(prev => prev.filter(r => now - r.createdAt < 6000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/rooms/${code}`)
@@ -229,9 +238,25 @@ export default function LivePresentation() {
       navigate('/?error=notfound');
     });
 
+    socket.on('reactionReceived', ({ emoji, id }) => {
+      setReactions(prev => [
+        ...prev,
+        {
+          id,
+          emoji,
+          x: Math.random() * 80 + 10,
+          scale: 0.6 + Math.random() * 0.8,
+          duration: 3 + Math.random() * 2.5,
+          rotation: (Math.random() - 0.5) * 60,
+          createdAt: Date.now()
+        }
+      ]);
+    });
+
     return () => {
       socket.off('roomUpdated');
       socket.off('roomDeleted');
+      socket.off('reactionReceived');
     };
   }, [code, navigate]);
 
@@ -336,6 +361,18 @@ export default function LivePresentation() {
                 ) : (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                 )}
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              <button 
+                onClick={() => socket.emit('toggleReactions', { code })} 
+                className={`p-1.5 rounded-md transition-colors ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                title={room.reactionsEnabled ? 'Disable Live Reactions' : 'Enable Live Reactions'}
+              >
+                <svg className="w-5 h-5" fill={room.reactionsEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
               </button>
 
               <div className="w-px h-4 bg-white/10 mx-1"></div>
@@ -549,6 +586,30 @@ export default function LivePresentation() {
 
       </div>
       <Footer />
+
+      {/* Live Reactions Floating Canvas */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+        {reactions.map(r => (
+          <motion.div
+            key={r.id}
+            initial={{ y: '105vh', x: `${r.x}vw`, scale: 0.3, opacity: 0, rotate: 0 }}
+            animate={{ 
+              y: '-10vh', 
+              scale: [0.3, r.scale, r.scale, r.scale * 0.8],
+              opacity: [0, 1, 1, 0],
+              rotate: r.rotation
+            }}
+            transition={{ 
+              duration: r.duration, 
+              ease: 'easeOut',
+              times: [0, 0.1, 0.8, 1]
+            }}
+            className="absolute text-5xl select-none filter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
+          >
+            {r.emoji}
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }

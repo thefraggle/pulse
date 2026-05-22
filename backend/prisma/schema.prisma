@@ -17,10 +17,11 @@ model Room {
   createdAt DateTime @default(now())
   
   // Host Controls & Limits
-  isLocked    Boolean   @default(false)
-  isHidden    Boolean   @default(false)
-  wordLimit   Int       @default(4)
-  timerEndsAt DateTime? // Optionaler Timer für die Session
+  isLocked         Boolean   @default(false)
+  isHidden         Boolean   @default(false)
+  wordLimit        Int       @default(4)
+  timerEndsAt      DateTime? // Optionaler Timer für die Session
+  reactionsEnabled Boolean   @default(false)
 
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String?
