@@ -1,6 +1,172 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
+
+const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
+
+// Reusable CustomWordcloud component (configured to render instantly without transition lags for printing)
+const CustomWordcloud = ({ words }) => {
+  const containerRef = useRef(null);
+  const [placements, setPlacements] = useState([]);
+
+  const computeLayout = useCallback(() => {
+    if (words.length === 0 || !containerRef.current) return;
+
+    const container = containerRef.current;
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    const max = Math.max(...words.map(w => w.value));
+    const min = Math.min(...words.map(w => w.value));
+    const sorted = [...words].sort((a, b) => b.value - a.value);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const items = sorted.map((w, i) => {
+      let size;
+      if (min === max) {
+        size = Math.min(100, 30 + (w.value * 10));
+      } else {
+        const ratio = (w.value - min) / (max - min);
+        size = 24 + (Math.pow(ratio, 0.7) * 70);
+      }
+
+      const hash = w.text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const isVertical = i > 0 && hash % 4 === 0;
+
+      ctx.font = `900 ${size}px sans-serif`;
+      const metrics = ctx.measureText(w.text);
+      const textW = metrics.width;
+      const textH = size * 0.85;
+
+      return {
+        ...w,
+        size,
+        color: COLORS[i % COLORS.length],
+        isVertical,
+        bw: isVertical ? textH : textW,
+        bh: isVertical ? textW : textH,
+        x: 0,
+        y: 0,
+      };
+    });
+
+    const placed = [];
+    const OVERLAP_TOLERANCE = 0.7;
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+
+      if (idx === 0) {
+        item.x = -item.bw / 2;
+        item.y = -item.bh / 2;
+        placed.push(item);
+        minX = item.x;
+        maxX = item.x + item.bw;
+        minY = item.y;
+        maxY = item.y + item.bh;
+        continue;
+      }
+
+      let angle = 0;
+      const step = 0.3;
+      const radiusStep = 2;
+      let found = false;
+
+      for (let attempt = 0; attempt < 1500; attempt++) {
+        angle += step;
+        const radius = radiusStep * angle;
+        const testX = Math.cos(angle) * radius - item.bw / 2;
+        const testY = Math.sin(angle) * radius - item.bh / 2;
+
+        let overlaps = false;
+        for (const p of placed) {
+          const overlapX = Math.max(0, Math.min(testX + item.bw, p.x + p.bw) - Math.max(testX, p.x));
+          const overlapY = Math.max(0, Math.min(testY + item.bh, p.y + p.bh) - Math.max(testY, p.y));
+          const overlapArea = overlapX * overlapY;
+          const smallerArea = Math.min(item.bw * item.bh, p.bw * p.bh);
+          
+          if (overlapArea > smallerArea * (1 - OVERLAP_TOLERANCE)) {
+            overlaps = true;
+            break;
+          }
+        }
+
+        if (!overlaps) {
+          item.x = testX;
+          item.y = testY;
+          found = true;
+          break;
+        }
+      }
+
+      if (found) {
+        placed.push(item);
+        minX = Math.min(minX, item.x);
+        maxX = Math.max(maxX, item.x + item.bw);
+        minY = Math.min(minY, item.y);
+        maxY = Math.max(maxY, item.y + item.bh);
+      }
+    }
+
+    const cloudWidth = maxX - minX;
+    const cloudHeight = maxY - minY;
+    const padding = 20;
+    const availableW = Math.max(10, cw - padding);
+    const availableH = Math.max(10, ch - padding);
+    
+    const scale = Math.min(1, availableW / cloudWidth, availableH / cloudHeight);
+    
+    const offsetX = cw / 2 - ((minX + maxX) / 2) * scale;
+    const offsetY = ch / 2 - ((minY + maxY) / 2) * scale;
+    
+    placed.forEach(p => {
+       p.x = p.x * scale + offsetX;
+       p.y = p.y * scale + offsetY;
+       p.size = p.size * scale;
+    });
+
+    setPlacements(placed);
+  }, [words]);
+
+  useEffect(() => {
+    computeLayout();
+  }, [computeLayout]);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => computeLayout());
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [computeLayout]);
+
+  return (
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden">
+      {placements.map((item) => (
+        <span
+          key={`${item.text}-${item.value}`}
+          style={{
+            position: 'absolute',
+            left: `${item.x}px`,
+            top: `${item.y}px`,
+            fontSize: `${item.size}px`,
+            color: item.color,
+            fontWeight: '900',
+            writingMode: item.isVertical ? 'vertical-rl' : 'horizontal-tb',
+            lineHeight: '1',
+            whiteSpace: 'nowrap',
+          }}
+          className="drop-shadow-[0_0_8px_rgba(255,255,255,0.1)] print:drop-shadow-none"
+        >
+          {item.text}
+        </span>
+      ))}
+    </div>
+  );
+};
 
 export default function ReportView() {
   const { code } = useParams();
@@ -39,9 +205,31 @@ export default function ReportView() {
   const totalOpen = room.openAnswers?.length || 0;
   const totalRatings = room.type === 'RATING' ? (room.options?.reduce((acc, curr) => acc + curr.ratingCount, 0) || 0) : 0;
 
+  const wordcloudData = room.type === 'WORDCLOUD' 
+    ? (room.words?.map(w => ({ id: w.id, text: w.text, value: w.count })) || [])
+    : [];
+
   return (
-    <div className="min-h-screen bg-[#0d0f1a] text-white print:bg-white print:text-black font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-[#0d0f1a] text-white print:bg-white print:text-black font-sans selection:bg-indigo-500 selection:text-white pb-12 print:pb-0">
       
+      {/* Custom print styles to support text-color switching automatically */}
+      <style>{`
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background-color: white !important;
+            color: black !important;
+          }
+          .print-text-color {
+            color: black !important;
+          }
+          .recharts-text {
+            fill: black !important;
+          }
+        }
+      `}</style>
+
       {/* Action Header - Hidden during print */}
       <div className="sticky top-0 bg-[#0d0f1a]/85 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center z-50 print:hidden max-w-5xl mx-auto rounded-b-2xl">
         <div className="flex gap-4 items-center">
@@ -129,8 +317,42 @@ export default function ReportView() {
 
           {/* POLL / RANKING */}
           {(room.type === 'POLL' || room.type === 'RANKING') && (
-            <div className="space-y-6">
-              <table className="w-full text-left border-collapse">
+            <div className="space-y-8">
+              
+              {/* Graphic Chart (Recharts Bar Chart) */}
+              <div className="glass-card p-6 bg-white/5 border border-white/10 print:bg-transparent print:border-black/10 print:rounded-none">
+                <h3 className="text-sm uppercase tracking-wider font-semibold text-white/50 print:text-black/50 mb-4">
+                  Visual Results Chart
+                </h3>
+                <div className="w-full h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={room.type === 'RANKING' ? [...(room.options || [])].sort((a,b) => b.votes - a.votes) : (room.options || [])} 
+                      layout="vertical" 
+                      margin={{ top: 5, right: 35, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="text" 
+                        type="category" 
+                        width={130} 
+                        tick={{ fill: 'currentColor', fontSize: 13 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Bar dataKey="votes" radius={[0, 4, 4, 0]} animationDuration={0}>
+                        {(room.options || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                        <LabelList dataKey="votes" position="right" fill="currentColor" fontSize={13} fontWeight="bold" />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <table className="w-full text-left border-collapse mt-6">
                 <thead>
                   <tr className="border-b border-white/20 print:border-black/20 text-white/50 print:text-black/50 text-xs uppercase tracking-wider">
                     <th className="py-3 font-semibold">Option</th>
@@ -156,38 +378,40 @@ export default function ReportView() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
 
-              {/* Print-safe visual charts */}
-              <div className="space-y-4 pt-4 border-t border-white/10 print:border-black/10">
+          {/* RATING */}
+          {room.type === 'RATING' && (
+            <div className="space-y-8">
+              
+              {/* Visual rating scale */}
+              <div className="glass-card p-6 bg-white/5 border border-white/10 print:bg-transparent print:border-black/10 print:rounded-none space-y-6">
                 <h3 className="text-sm uppercase tracking-wider font-semibold text-white/50 print:text-black/50">
-                  Visual Distribution
+                  Rating Scale Charts
                 </h3>
                 {room.options?.map(opt => {
-                  const base = room.type === 'RANKING' ? totalPoints : totalVotes;
-                  const percentage = base > 0 ? Math.round((opt.votes / base) * 100) : 0;
+                  const avg = opt.ratingCount > 0 ? (opt.ratingTotal / opt.ratingCount) : 0;
+                  const percent = (avg / 5) * 100;
                   return (
-                    <div key={opt.id} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-white/80 print:text-black/80">
+                    <div key={opt.id} className="space-y-2">
+                      <div className="flex justify-between text-sm font-semibold text-white/80 print:text-black/80">
                         <span>{opt.text}</span>
-                        <span>{percentage}%</span>
+                        <span className="text-indigo-400 print:text-indigo-600 font-bold">{avg.toFixed(1)} / 5</span>
                       </div>
                       <div className="h-4 bg-white/5 rounded print:bg-black/5 overflow-hidden border border-white/10 print:border-black/10">
                         <div 
                           className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 print:bg-indigo-600" 
-                          style={{ width: `${percentage}%` }}
+                          style={{ width: `${percent}%` }}
                         />
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          )}
 
-          {/* RATING */}
-          {room.type === 'RATING' && (
-            <div className="space-y-6">
-              <table className="w-full text-left border-collapse">
+              {/* Data Table */}
+              <table className="w-full text-left border-collapse mt-6">
                 <thead>
                   <tr className="border-b border-white/20 print:border-black/20 text-white/50 print:text-black/50 text-xs uppercase tracking-wider">
                     <th className="py-3 font-semibold">Category</th>
@@ -210,38 +434,27 @@ export default function ReportView() {
                   })}
                 </tbody>
               </table>
-
-              {/* Visual Bars for Ratings */}
-              <div className="space-y-4 pt-4 border-t border-white/10 print:border-black/10">
-                <h3 className="text-sm uppercase tracking-wider font-semibold text-white/50 print:text-black/50">
-                  Rating Scales
-                </h3>
-                {room.options?.map(opt => {
-                  const avg = opt.ratingCount > 0 ? (opt.ratingTotal / opt.ratingCount) : 0;
-                  const percent = (avg / 5) * 100;
-                  return (
-                    <div key={opt.id} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-white/80 print:text-black/80">
-                        <span>{opt.text}</span>
-                        <span>{avg.toFixed(1)} / 5</span>
-                      </div>
-                      <div className="h-4 bg-white/5 rounded print:bg-black/5 overflow-hidden border border-white/10 print:border-black/10">
-                        <div 
-                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 print:bg-indigo-600" 
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
           {/* WORDCLOUD */}
           {room.type === 'WORDCLOUD' && (
-            <div className="space-y-4">
-              <table className="w-full text-left border-collapse">
+            <div className="space-y-8">
+              
+              {/* Visual Wordcloud Block */}
+              {wordcloudData.length > 0 && (
+                <div className="glass-card p-6 bg-white/5 border border-white/10 print:bg-transparent print:border-black/10 print:rounded-none">
+                  <h3 className="text-sm uppercase tracking-wider font-semibold text-white/50 print:text-black/50 mb-4">
+                    Visual Word Cloud
+                  </h3>
+                  <div className="w-full h-[320px] relative">
+                    <CustomWordcloud words={wordcloudData} />
+                  </div>
+                </div>
+              )}
+
+              {/* Data Table */}
+              <table className="w-full text-left border-collapse mt-6">
                 <thead>
                   <tr className="border-b border-white/20 print:border-black/20 text-white/50 print:text-black/50 text-xs uppercase tracking-wider">
                     <th className="py-3 font-semibold">Submitted Word / Term</th>
@@ -249,7 +462,7 @@ export default function ReportView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 print:divide-black/10 text-sm">
-                  {!room.words || room.words.length === 0 ? (
+                  {wordcloudData.length === 0 ? (
                     <tr>
                       <td colSpan="2" className="py-4 text-center italic text-white/40 print:text-black/40">No words submitted</td>
                     </tr>
