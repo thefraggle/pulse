@@ -13,13 +13,17 @@ export default function Footer({ showAdminLink = false }) {
       <a href="https://github.com/thefraggle/pulse" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/60 transition-colors">
         {versionStr}
       </a>
-      <span className="text-white/10">·</span>
-      <button 
-        onClick={() => window.dispatchEvent(new Event('start-tour'))} 
-        className="text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none p-0 m-0"
-      >
-        Help
-      </button>
+      {hasToken && (
+        <>
+          <span className="text-white/10">·</span>
+          <button 
+            onClick={() => window.dispatchEvent(new Event('start-tour'))} 
+            className="text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none p-0 m-0"
+          >
+            Help
+          </button>
+        </>
+      )}
       <span className="text-white/10">·</span>
       <a href="https://notthoff.org" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/60 transition-colors">
         © 2026 Daniel Notthoff
