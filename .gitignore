@@ -3,7 +3,7 @@ node_modules
 .env.*
 dist
 build
-.antigravity
+.antigravity/
 .DS_Store
 *.db
 *.db-journal
