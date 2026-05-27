@@ -624,7 +624,7 @@ export default function LivePresentation() {
         </div>
 
       </div>
-      <Footer />
+      <Footer showHelp={true} />
 
       {/* Live Reactions Floating Canvas */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">

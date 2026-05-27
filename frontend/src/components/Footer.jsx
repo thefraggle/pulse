@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import pkg from '../../package.json';
 
-export default function Footer({ showAdminLink = false }) {
+export default function Footer({ showAdminLink = false, showHelp = false }) {
   const hasToken = !!localStorage.getItem('pulse_token');
   const versionStr = `Pulse v${pkg.version}`;
 
@@ -13,7 +13,7 @@ export default function Footer({ showAdminLink = false }) {
       <a href="https://github.com/thefraggle/pulse" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/60 transition-colors">
         {versionStr}
       </a>
-      {hasToken && (
+      {(showHelp && hasToken) && (
         <>
           <span className="text-white/10">·</span>
           <button 

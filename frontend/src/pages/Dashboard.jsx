@@ -531,7 +531,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <Footer />
+      <Footer showHelp={true} />
     </div>
   );
 }
