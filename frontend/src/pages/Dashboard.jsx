@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [pwdMessage, setPwdMessage] = useState({ text: '', type: '' });
+  const [highlightForm, setHighlightForm] = useState(false);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('pulse_token');
@@ -128,33 +129,22 @@ export default function Dashboard() {
     }
   };
 
-  const handleCloneRoom = async (room) => {
-    if (!confirm('Restart session (old session will be deleted, new code generated)?')) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          type: room.type,
-          question: room.question,
-          wordLimit: room.wordLimit,
-          options: room.options ? room.options.map(o => o.text) : [],
-          userId: room.userId
-        })
-      });
-      const data = await res.json();
-      
-      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms/${room.id}`, { 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      navigate(`/live/${data.code}`);
-    } catch (e) {
-      console.error(e);
+  const handleLoadTemplate = (room) => {
+    setType(room.type);
+    setQuestion(room.question || '');
+    setWordLimit(room.wordLimit || 4);
+    if (room.options && room.options.length > 0) {
+      setOptions(room.options.map(o => o.text));
+    } else {
+      setOptions(['', '']);
+    }
+    
+    setHighlightForm(true);
+    setTimeout(() => setHighlightForm(false), 2000);
+
+    const formElement = document.getElementById('tour-create-session');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -284,7 +274,12 @@ export default function Dashboard() {
 
       {activeTab === 'rooms' && (
         <div className="grid md:grid-cols-[4fr_7fr] gap-8">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6" id="tour-create-session">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            className={`glass-card p-6 transition-all duration-500 ${highlightForm ? 'ring-2 ring-indigo-500 border-transparent shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-[1.02]' : ''}`} 
+            id="tour-create-session"
+          >
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Create New Session</h2>
             <form onSubmit={handleCreateRoom} className="flex flex-col gap-4">
               <div>
@@ -403,7 +398,7 @@ export default function Dashboard() {
                           <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
                       </button>
-                      <button onClick={() => handleCloneRoom(r)} className="p-2 bg-white/10 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white" title="Clone session (new code)">
+                      <button onClick={() => handleLoadTemplate(r)} className="p-2 bg-white/10 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white" title="Load as template">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
                           <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
