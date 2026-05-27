@@ -298,9 +298,9 @@ export default function LivePresentation() {
               &larr; Dashboard
             </Link>
           )}
-          
           {isAdmin && (
             <div className="flex items-center gap-1 bg-white/5 px-2 py-1.5 rounded-lg border border-white/10" id="tour-admin-controls">
+              {/* 1. Pause voting */}
               <button 
                 onClick={() => socket.emit('toggleRoomLock', { code })} 
                 className={`p-1.5 rounded-md transition-colors ${isLocked ? 'text-yellow-400 bg-yellow-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
@@ -315,7 +315,7 @@ export default function LivePresentation() {
               
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
-              {/* Session Timer Control */}
+              {/* 2. Session Timer Control */}
               <button 
                 onClick={() => {
                   if (room.timerEndsAt) {
@@ -340,6 +340,79 @@ export default function LivePresentation() {
 
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
+              {/* 3. Hide/Show Results */}
+              <button 
+                onClick={() => socket.emit('toggleRoomVisibility', { code })} 
+                className={`p-1.5 rounded-md transition-colors ${room.isHidden ? 'text-green-400 bg-green-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                title={room.isHidden ? 'Show results' : 'Hide results'}
+              >
+                {room.isHidden ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                )}
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* 4. Toggle Reactions */}
+              <button 
+                onClick={() => socket.emit('toggleReactions', { code })} 
+                className={`p-1.5 rounded-md transition-colors ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                title={room.reactionsEnabled ? 'Disable Live Reactions' : 'Enable Live Reactions'}
+              >
+                <svg className="w-5 h-5" fill={room.reactionsEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* 5. Export to CSV */}
+              <button 
+                onClick={() => exportRoomToCSV(room)} 
+                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
+                title="Export to CSV"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* 6. Report PDF Button */}
+              <Link 
+                to={`/live/${code}/report`} 
+                target="_blank"
+                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
+                title="Print / PDF Report"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </Link>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* 7. Remote Control Button (with better smartphone+waves icon) */}
+              <button 
+                onClick={() => setShowRemoteModal(true)} 
+                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
+                title="Remote Control"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <rect x="5" y="3" width="8" height="18" rx="2" strokeWidth="2" />
+                  <line x1="9" y1="18" x2="9" y2="18" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M17 7a4 4 0 0 1 0 10M21 4a8 8 0 0 1 0 16" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* 8. Reset/Clear Room Data */}
               <button 
                 onClick={() => {
                   if (window.confirm("Are you sure? All previous answers will be deleted.")) {
@@ -356,73 +429,7 @@ export default function LivePresentation() {
 
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
-              <button 
-                onClick={() => socket.emit('toggleRoomVisibility', { code })} 
-                className={`p-1.5 rounded-md transition-colors ${room.isHidden ? 'text-green-400 bg-green-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-                title={room.isHidden ? 'Show results' : 'Hide results'}
-              >
-                {room.isHidden ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                )}
-              </button>
-
-              <div className="w-px h-4 bg-white/10 mx-1"></div>
-
-              <button 
-                onClick={() => socket.emit('toggleReactions', { code })} 
-                className={`p-1.5 rounded-md transition-colors ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-                title={room.reactionsEnabled ? 'Disable Live Reactions' : 'Enable Live Reactions'}
-              >
-                <svg className="w-5 h-5" fill={room.reactionsEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </button>
-
-              <div className="w-px h-4 bg-white/10 mx-1"></div>
-
-              <button 
-                onClick={() => exportRoomToCSV(room)} 
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
-                title="Export to CSV"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </button>
-
-              <div className="w-px h-4 bg-white/10 mx-1"></div>
-
-              {/* Remote Control Button */}
-              <button 
-                onClick={() => setShowRemoteModal(true)} 
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
-                title="Remote Control"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </button>
-
-              <div className="w-px h-4 bg-white/10 mx-1"></div>
-
-              {/* Report PDF Button */}
-              <Link 
-                to={`/live/${code}/report`} 
-                target="_blank"
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
-                title="Print / PDF Report"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </Link>
-
-              <div className="w-px h-4 bg-white/10 mx-1"></div>
-
+              {/* 9. Show/Hide Join Info */}
               <button 
                 onClick={() => setShowJoin(!showJoin)} 
                 className={`p-1.5 rounded-md transition-colors ${showJoin ? 'text-indigo-400 bg-indigo-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}

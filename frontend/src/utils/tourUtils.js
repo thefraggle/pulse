@@ -69,7 +69,7 @@ export const startLiveTour = (force = false) => {
         element: '#tour-admin-controls',
         popover: {
           title: 'Host Controls',
-          description: 'Your command center: Pause voting, set a countdown timer, reset answers, hide live results, toggle live reactions (heart icon), or export the data to CSV.',
+          description: 'Your command center in order: 1. Pause voting, 2. Set countdown timer, 3. Hide results, 4. Toggle live reactions, 5. Export to CSV, 6. Print PDF report, 7. Open mobile remote control, 8. Reset/Clear room data, 9. Show/Hide QR code & join info.',
           side: 'bottom',
           align: 'center'
         }
