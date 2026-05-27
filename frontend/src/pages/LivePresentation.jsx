@@ -203,9 +203,9 @@ export default function LivePresentation() {
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [showJoin, setShowJoin] = useState(true);
   const [reactions, setReactions] = useState([]);
-  
   const isAdmin = !!localStorage.getItem('pulse_token');
 
   useEffect(() => {
@@ -238,6 +238,10 @@ export default function LivePresentation() {
       navigate('/?error=notfound');
     });
 
+    socket.on('joinInfoToggled', () => {
+      setShowJoin(prev => !prev);
+    });
+
     socket.on('reactionReceived', ({ emoji, id }) => {
       setReactions(prev => [
         ...prev,
@@ -256,6 +260,7 @@ export default function LivePresentation() {
     return () => {
       socket.off('roomUpdated');
       socket.off('roomDeleted');
+      socket.off('joinInfoToggled');
       socket.off('reactionReceived');
     };
   }, [code, navigate]);
@@ -388,6 +393,33 @@ export default function LivePresentation() {
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
               </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* Remote Control Button */}
+              <button 
+                onClick={() => setShowRemoteModal(true)} 
+                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
+                title="Remote Control"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </button>
+
+              <div className="w-px h-4 bg-white/10 mx-1"></div>
+
+              {/* Report PDF Button */}
+              <Link 
+                to={`/live/${code}/report`} 
+                target="_blank"
+                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
+                title="Print / PDF Report"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </Link>
 
               <div className="w-px h-4 bg-white/10 mx-1"></div>
 
@@ -610,6 +642,53 @@ export default function LivePresentation() {
           </motion.div>
         ))}
       </div>
+
+      {/* Remote Control Modal */}
+      {showRemoteModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0f1a] border border-white/20 p-8 rounded-2xl max-w-sm w-full text-center relative shadow-2xl">
+            <button 
+              onClick={() => setShowRemoteModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-xl font-bold text-white mb-2">Presenter Remote Control</h3>
+            <p className="text-xs text-white/50 mb-6">
+              Scan this QR code with your smartphone to control this session directly from your phone.
+            </p>
+            <div className="bg-white p-4 rounded-xl inline-block mb-6">
+              <QRCodeSVG 
+                value={`${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(localStorage.getItem('pulse_token') || '')}&r=${encodeURIComponent(localStorage.getItem('pulse_role') || '')}&u=${encodeURIComponent(localStorage.getItem('pulse_username') || '')}`} 
+                size={200} 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  const token = localStorage.getItem('pulse_token');
+                  const role = localStorage.getItem('pulse_role');
+                  const username = localStorage.getItem('pulse_username');
+                  const url = `${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(token || '')}&r=${encodeURIComponent(role || '')}&u=${encodeURIComponent(username || '')}`;
+                  navigator.clipboard.writeText(url);
+                  alert('Copied link to clipboard!');
+                }}
+                className="glow-button py-2.5 text-sm font-bold w-full cursor-pointer"
+              >
+                Copy Link
+              </button>
+              <button 
+                onClick={() => setShowRemoteModal(false)}
+                className="py-2 text-sm text-white/50 hover:text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

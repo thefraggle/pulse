@@ -342,6 +342,10 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('toggleJoinInfo', ({ code }) => {
+    io.to(code).emit('joinInfoToggled');
+  });
+
   socket.on('sendReaction', ({ code, emoji }) => {
     const reactionId = crypto.randomBytes(4).toString('hex');
     io.to(code).emit('reactionReceived', { emoji, id: reactionId });
