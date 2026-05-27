@@ -276,6 +276,20 @@ export default function LivePresentation() {
     return () => window.removeEventListener('start-tour', handleStartTour);
   }, [isAdmin]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowRemoteModal(false);
+      }
+    };
+    if (showRemoteModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showRemoteModal]);
+
   const { timeLeft, formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
   const isWarning = timeLeft !== null && timeLeft <= 20;
   
@@ -652,8 +666,14 @@ export default function LivePresentation() {
 
       {/* Remote Control Modal */}
       {showRemoteModal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0d0f1a] border border-white/20 p-8 rounded-2xl max-w-sm w-full text-center relative shadow-2xl">
+        <div 
+          onClick={() => setShowRemoteModal(false)}
+          className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#0d0f1a] border border-white/20 p-8 rounded-2xl max-w-sm w-full text-center relative shadow-2xl cursor-default"
+          >
             <button 
               onClick={() => setShowRemoteModal(false)}
               className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
