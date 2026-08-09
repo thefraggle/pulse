@@ -9,7 +9,11 @@ import useCountdown from '../hooks/useCountdown';
 import { exportRoomToCSV } from '../utils/exportUtils';
 import { startLiveTour } from '../utils/tourUtils';
 
-const socket = io(import.meta.env.VITE_API_URL || '');
+const socket = io(import.meta.env.VITE_API_URL || '', {
+  auth: {
+    token: localStorage.getItem('pulse_token') || ''
+  }
+});
 
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 
@@ -228,7 +232,14 @@ export default function LivePresentation() {
       })
       .catch(() => navigate('/?error=notfound'));
 
-    socket.emit('joinRoom', code);
+    const handleConnect = () => {
+      socket.emit('joinRoom', code);
+    };
+
+    socket.on('connect', handleConnect);
+    if (socket.connected) {
+      handleConnect();
+    }
 
     socket.on('roomUpdated', (updatedRoom) => {
       setRoom(updatedRoom);
@@ -258,6 +269,7 @@ export default function LivePresentation() {
     });
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('roomUpdated');
       socket.off('roomDeleted');
       socket.off('joinInfoToggled');
@@ -316,7 +328,7 @@ export default function LivePresentation() {
             <div className="flex items-center gap-1 bg-white/5 px-2 py-1.5 rounded-lg border border-white/10" id="tour-admin-controls">
               {/* 1. Pause voting */}
               <button 
-                onClick={() => socket.emit('toggleRoomLock', { code })} 
+                onClick={() => socket.emit('toggleRoomLock', { code, token: localStorage.getItem('pulse_token') })} 
                 className={`p-1.5 rounded-md transition-colors ${isLocked ? 'text-yellow-400 bg-yellow-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={isLocked ? 'Open poll' : 'Pause poll'}
               >
@@ -333,13 +345,13 @@ export default function LivePresentation() {
               <button 
                 onClick={() => {
                   if (room.timerEndsAt) {
-                    socket.emit('clearTimer', { code });
+                    socket.emit('clearTimer', { code, token: localStorage.getItem('pulse_token') });
                   } else {
                     const minStr = window.prompt("Timer duration in minutes (e.g. 2 or 0.5):", "2");
                     if (minStr !== null) {
                       const minutes = parseFloat(minStr.replace(',', '.'));
                       if (!isNaN(minutes) && minutes > 0) {
-                        socket.emit('startTimer', { code, minutes });
+                        socket.emit('startTimer', { code, minutes, token: localStorage.getItem('pulse_token') });
                       }
                     }
                   }
@@ -356,7 +368,7 @@ export default function LivePresentation() {
 
               {/* 3. Hide/Show Results */}
               <button 
-                onClick={() => socket.emit('toggleRoomVisibility', { code })} 
+                onClick={() => socket.emit('toggleRoomVisibility', { code, token: localStorage.getItem('pulse_token') })} 
                 className={`p-1.5 rounded-md transition-colors ${room.isHidden ? 'text-green-400 bg-green-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={room.isHidden ? 'Show results' : 'Hide results'}
               >
@@ -371,7 +383,7 @@ export default function LivePresentation() {
 
               {/* 4. Toggle Reactions */}
               <button 
-                onClick={() => socket.emit('toggleReactions', { code })} 
+                onClick={() => socket.emit('toggleReactions', { code, token: localStorage.getItem('pulse_token') })} 
                 className={`p-1.5 rounded-md transition-colors ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={room.reactionsEnabled ? 'Disable Live Reactions' : 'Enable Live Reactions'}
               >
@@ -430,7 +442,7 @@ export default function LivePresentation() {
               <button 
                 onClick={() => {
                   if (window.confirm("Are you sure? All previous answers will be deleted.")) {
-                    socket.emit('resetRoom', { code });
+                    socket.emit('resetRoom', { code, token: localStorage.getItem('pulse_token') });
                   }
                 }}
                 className="p-1.5 rounded-md transition-colors text-white/50 hover:text-red-400 hover:bg-red-400/10"
@@ -536,7 +548,7 @@ export default function LivePresentation() {
                 isAdmin={isAdmin} 
                 onWordClick={(word) => {
                   if (window.confirm(`Delete word "${word.text}"?`)) {
-                    socket.emit('deleteWord', { code, wordId: word.id });
+                    socket.emit('deleteWord', { code, wordId: word.id, token: localStorage.getItem('pulse_token') });
                   }
                 }} 
               />
@@ -562,7 +574,7 @@ export default function LivePresentation() {
                    </div>
                    {isAdmin && (
                      <button
-                       onClick={() => socket.emit('deleteQna', { code, messageId: msg.id })}
+                       onClick={() => socket.emit('deleteQna', { code, messageId: msg.id, token: localStorage.getItem('pulse_token') })}
                        className="absolute top-4 right-4 text-white/20 hover:text-red-400 transition-colors"
                        title="Delete question"
                      >
@@ -594,7 +606,7 @@ export default function LivePresentation() {
                    <p className="text-xl text-white font-medium">{ans.text}</p>
                    {isAdmin && (
                      <button
-                       onClick={() => socket.emit('deleteOpenAnswer', { code, answerId: ans.id })}
+                       onClick={() => socket.emit('deleteOpenAnswer', { code, answerId: ans.id, token: localStorage.getItem('pulse_token') })}
                        className="absolute top-2 right-2 text-white/20 hover:text-red-400 transition-colors"
                        title="Delete contribution"
                      >

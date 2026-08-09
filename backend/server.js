@@ -40,6 +40,45 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Socket.io connection middleware to verify host JWT token during handshake
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (token) {
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (!err) {
+        socket.user = user;
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
+// Helper: Verify if socket or payload token is authorized to manage the room
+const verifyHostAction = async (socket, code, payloadToken) => {
+  if (!code) return null;
+  const upperCode = code.toUpperCase();
+  const room = await prisma.room.findUnique({ where: { code: upperCode } });
+  if (!room) return null;
+
+  let user = socket.user;
+  if (!user && payloadToken) {
+    try {
+      user = jwt.verify(payloadToken, JWT_SECRET);
+    } catch (e) {
+      // Ignore invalid payload token
+    }
+  }
+
+  if (!user) return null;
+  if (user.role === 'SUPERADMIN') return room;
+  if (room.userId === user.id) return room;
+
+  return null;
+};
+
+
 // Helper: Generate 6-char code (without ambiguous chars: O, 0, I, 1, L)
 const generateCode = () => {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -297,9 +336,9 @@ io.on('connection', (socket) => {
     });
   };
 
-  socket.on('toggleRoomLock', async ({ code }) => {
+  socket.on('toggleRoomLock', async ({ code, token }) => {
     try {
-      const current = await prisma.room.findUnique({ where: { code } });
+      const current = await verifyHostAction(socket, code, token);
       if (!current) return;
       await prisma.room.update({
         where: { code },
@@ -312,9 +351,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('toggleRoomVisibility', async ({ code }) => {
+  socket.on('toggleRoomVisibility', async ({ code, token }) => {
     try {
-      const current = await prisma.room.findUnique({ where: { code } });
+      const current = await verifyHostAction(socket, code, token);
       if (!current) return;
       await prisma.room.update({
         where: { code },
@@ -327,9 +366,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('toggleReactions', async ({ code }) => {
+  socket.on('toggleReactions', async ({ code, token }) => {
     try {
-      const current = await prisma.room.findUnique({ where: { code } });
+      const current = await verifyHostAction(socket, code, token);
       if (!current) return;
       await prisma.room.update({
         where: { code },
@@ -342,8 +381,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('toggleJoinInfo', ({ code }) => {
-    io.to(code).emit('joinInfoToggled');
+  socket.on('toggleJoinInfo', async ({ code, token }) => {
+    try {
+      const current = await verifyHostAction(socket, code, token);
+      if (!current) return;
+      io.to(code).emit('joinInfoToggled');
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   socket.on('sendReaction', ({ code, emoji }) => {
@@ -351,9 +396,9 @@ io.on('connection', (socket) => {
     io.to(code).emit('reactionReceived', { emoji, id: reactionId });
   });
 
-  socket.on('startTimer', async ({ code, minutes }) => {
+  socket.on('startTimer', async ({ code, minutes, token }) => {
     try {
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await verifyHostAction(socket, code, token);
       if (!room) return;
       const endsAt = new Date(Date.now() + minutes * 60000);
       await prisma.room.update({
@@ -367,9 +412,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('clearTimer', async ({ code }) => {
+  socket.on('clearTimer', async ({ code, token }) => {
     try {
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await verifyHostAction(socket, code, token);
       if (!room) return;
       await prisma.room.update({
         where: { code },
@@ -382,9 +427,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('resetRoom', async ({ code }) => {
+  socket.on('resetRoom', async ({ code, token }) => {
     try {
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await verifyHostAction(socket, code, token);
       if (!room) return;
 
       await prisma.word.deleteMany({ where: { roomId: room.id } });
@@ -468,13 +513,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('deleteWord', async ({ code, wordId }) => {
+  socket.on('deleteWord', async ({ code, wordId, token }) => {
     try {
+      const room = await verifyHostAction(socket, code, token);
+      if (!room) return;
       await prisma.word.delete({
         where: { id: wordId }
       });
-      const room = await getFullRoom(code);
-      if (room) io.to(code).emit('roomUpdated', room);
+      const updatedRoom = await getFullRoom(code);
+      if (updatedRoom) io.to(code).emit('roomUpdated', updatedRoom);
     } catch (e) {
       console.error(e);
     }
@@ -508,13 +555,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('deleteQna', async ({ code, messageId }) => {
+  socket.on('deleteQna', async ({ code, messageId, token }) => {
     try {
+      const room = await verifyHostAction(socket, code, token);
+      if (!room) return;
       await prisma.qnaMessage.delete({
         where: { id: messageId }
       });
-      const room = await getFullRoom(code);
-      if (room) io.to(code).emit('roomUpdated', room);
+      const updatedRoom = await getFullRoom(code);
+      if (updatedRoom) io.to(code).emit('roomUpdated', updatedRoom);
     } catch (e) {
       console.error(e);
     }
@@ -535,13 +584,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('deleteOpenAnswer', async ({ code, answerId }) => {
+  socket.on('deleteOpenAnswer', async ({ code, answerId, token }) => {
     try {
+      const room = await verifyHostAction(socket, code, token);
+      if (!room) return;
       await prisma.openAnswer.delete({
         where: { id: answerId }
       });
-      const room = await getFullRoom(code);
-      if (room) io.to(code).emit('roomUpdated', room);
+      const updatedRoom = await getFullRoom(code);
+      if (updatedRoom) io.to(code).emit('roomUpdated', updatedRoom);
     } catch (e) {
       console.error(e);
     }

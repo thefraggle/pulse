@@ -5,7 +5,11 @@ import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import useCountdown from '../hooks/useCountdown';
 
-const socket = io(import.meta.env.VITE_API_URL || '');
+const socket = io(import.meta.env.VITE_API_URL || '', {
+  auth: {
+    token: localStorage.getItem('pulse_token') || ''
+  }
+});
 
 export default function RemoteControl() {
   const { code } = useParams();
@@ -56,7 +60,14 @@ export default function RemoteControl() {
         navigate('/dashboard');
       });
 
-    socket.emit('joinRoom', code);
+    const handleConnect = () => {
+      socket.emit('joinRoom', code);
+    };
+
+    socket.on('connect', handleConnect);
+    if (socket.connected) {
+      handleConnect();
+    }
 
     const handleRoomUpdated = (updatedRoom) => {
       if (updatedRoom.code === code.toUpperCase()) {
@@ -72,6 +83,7 @@ export default function RemoteControl() {
     });
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('roomUpdated', handleRoomUpdated);
       socket.off('roomDeleted');
     };
@@ -105,7 +117,7 @@ export default function RemoteControl() {
 
   // Socket action emitters
   const emitAction = (eventName, payload = {}) => {
-    socket.emit(eventName, { code, ...payload });
+    socket.emit(eventName, { code, token: localStorage.getItem('pulse_token'), ...payload });
   };
 
   const handleStartTimer = (minutes) => {

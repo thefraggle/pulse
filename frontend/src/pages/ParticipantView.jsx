@@ -50,7 +50,14 @@ export default function ParticipantView() {
         navigate('/?error=notfound');
       });
 
-    socket.emit('joinRoom', code);
+    const handleConnect = () => {
+      socket.emit('joinRoom', code);
+    };
+
+    socket.on('connect', handleConnect);
+    if (socket.connected) {
+      handleConnect();
+    }
 
     socket.on('roomUpdated', (updatedRoom) => {
       setRoom(prev => {
@@ -64,6 +71,7 @@ export default function ParticipantView() {
     });
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('roomDeleted');
       socket.off('roomUpdated');
     };
