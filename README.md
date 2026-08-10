@@ -8,12 +8,15 @@ Pulse is a 100% free, lightweight, and self-hosted web application for running i
 * **Privacy First & GDPR Compliant:** Self-hosted on your own infrastructure. No third-party tracking, no hidden data collection.
 * **Real-Time Synchronization:** Uses Socket.io to push results instantly to all connected screens.
 * **Multiple Session Types:**
-  * Wordcloud (Dynamic sizing based on frequency)
+  * Wordcloud (Dynamic sizing based on frequency with sentence-splitting and stop-word filtering)
   * Poll (Single Choice)
   * Ranking (Prioritization)
   * Rating (5-Star Scale)
   * Q&A (Audience questions with upvotes)
   * Open Ended (Brainstorming)
+* **Presenter Remote Control:** Control the presentation view directly from your smartphone via a secure QR-code coupling (pause sessions, clear timer, show/hide results, trigger emojis, and delete questions/words).
+* **Live Reactions (Emoji Rain):** Allow participants to send live reactions (👍, ❤️, 🎉, 🔥, 👏) that float dynamically across the presenter's screen.
+* **PDF Report Export:** Print-optimized report page (`/live/:code/report`) with clean CSS print styles to export session summaries directly to PDF.
 * **Session Timer:** Hosts can set a live countdown that automatically locks the session when time is up.
 * **Data Export:** Download session results instantly as CSV files.
 * **Interactive Onboarding:** Built-in product tours guide new hosts through the dashboard and live views.
