@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const helmet = require('helmet');
 const { generatePassphrase } = require('./utils/passphrase');
 require('dotenv').config();
 
@@ -21,6 +22,7 @@ const io = new Server(server, {
 });
 const prisma = new PrismaClient();
 
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
