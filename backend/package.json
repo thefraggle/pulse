@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,8 @@
   "author": "",
   "license": "ISC",
   "overrides": {
-    "deepmerge-ts": "^8.0.0"
+    "deepmerge-ts": "^8.0.0",
+    "raw-body": "^4.0.0"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
