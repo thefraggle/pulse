@@ -27,8 +27,6 @@ const CustomWordcloud = ({ words, isAdmin, onWordClick }) => {
     const container = containerRef.current;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    const cx = cw / 2;
-    const cy = ch / 2;
 
     const max = Math.max(...words.map(w => w.value));
     const min = Math.min(...words.map(w => w.value));

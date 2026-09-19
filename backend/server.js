@@ -22,6 +22,18 @@ const io = new Server(server, {
 });
 const prisma = new PrismaClient();
 
+// Configure SQLite WAL (Write-Ahead Logging) mode for high-concurrency voting
+const initDatabase = async () => {
+  try {
+    await prisma.$queryRawUnsafe('PRAGMA journal_mode = WAL;');
+    await prisma.$queryRawUnsafe('PRAGMA synchronous = NORMAL;');
+    console.log('SQLite WAL mode enabled.');
+  } catch (err) {
+    console.warn('Failed to configure SQLite WAL mode:', err?.message || err);
+  }
+};
+initDatabase();
+
 app.use(helmet());
 app.use(cors());
 app.use(express.json());

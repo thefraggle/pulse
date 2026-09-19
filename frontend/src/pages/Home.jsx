@@ -22,7 +22,7 @@ export default function Home() {
           return;
         }
         navigate(`/${code.toUpperCase()}`);
-      } catch (err) {
+      } catch {
         setError('Connection error');
         setLoading(false);
       }

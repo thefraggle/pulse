@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
@@ -26,13 +26,77 @@ export default function Dashboard() {
   const role = localStorage.getItem('pulse_role');
   const username = localStorage.getItem('pulse_username');
 
+  const fetchRooms = useCallback(async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('pulse_token');
+        localStorage.removeItem('pulse_role');
+        localStorage.removeItem('pulse_username');
+        navigate('/login');
+        return;
+      }
+      const data = await res.json();
+      setRooms(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [token, navigate]);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setUsers(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
-    fetchRooms();
-    if (role === 'SUPERADMIN') fetchUsers();
+    let isMounted = true;
+    const init = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('pulse_token');
+          localStorage.removeItem('pulse_role');
+          localStorage.removeItem('pulse_username');
+          navigate('/login');
+          return;
+        }
+        const data = await res.json();
+        if (isMounted) setRooms(data);
+      } catch (e) {
+        console.error(e);
+      }
+
+      if (role === 'SUPERADMIN') {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (isMounted) setUsers(data);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    init();
+    return () => {
+      isMounted = false;
+    };
   }, [navigate, token, role]);
 
   useEffect(() => {
@@ -50,37 +114,6 @@ export default function Dashboard() {
       window.removeEventListener('start-tour', handleStartTour);
     };
   }, [activeTab, token]);
-
-  const fetchRooms = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('pulse_token');
-        localStorage.removeItem('pulse_role');
-        localStorage.removeItem('pulse_username');
-        navigate('/login');
-        return;
-      }
-      const data = await res.json();
-      setRooms(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setUsers(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
@@ -214,7 +247,7 @@ export default function Dashboard() {
       } else {
         setPwdMessage({ text: data.error || 'Error changing password', type: 'error' });
       }
-    } catch (e) {
+    } catch {
       setPwdMessage({ text: 'Connection error', type: 'error' });
     }
   };

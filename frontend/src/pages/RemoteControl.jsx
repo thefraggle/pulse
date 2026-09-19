@@ -16,7 +16,19 @@ export default function RemoteControl() {
   const navigate = useNavigate();
   
   // Auth state
-  const [token, setToken] = useState(localStorage.getItem('pulse_token'));
+  const [token, setToken] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const t = searchParams.get('t');
+    const r = searchParams.get('r');
+    const u = searchParams.get('u');
+    if (t && r && u) {
+      localStorage.setItem('pulse_token', t);
+      localStorage.setItem('pulse_role', r);
+      localStorage.setItem('pulse_username', u);
+      return t;
+    }
+    return localStorage.getItem('pulse_token');
+  });
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -26,19 +38,10 @@ export default function RemoteControl() {
   const [loading, setLoading] = useState(true);
   const [timerMinutes, setTimerMinutes] = useState('2');
 
-  // Parse token from URL if present (scanned QR code auto-auth)
+  // Clean query parameters from URL if scanned from QR code
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const t = searchParams.get('t');
-    const r = searchParams.get('r');
-    const u = searchParams.get('u');
-    
-    if (t && r && u) {
-      localStorage.setItem('pulse_token', t);
-      localStorage.setItem('pulse_role', r);
-      localStorage.setItem('pulse_username', u);
-      setToken(t);
-      // Clean query parameters from URL
+    if (searchParams.has('t')) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -110,7 +113,7 @@ export default function RemoteControl() {
       } else {
         setLoginError(data.error || 'Login failed');
       }
-    } catch (err) {
+    } catch {
       setLoginError('Connection error');
     }
   };

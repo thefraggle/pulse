@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 
+const calculateDiff = (target) => {
+  if (!target) return null;
+  const diff = new Date(target) - new Date();
+  return diff > 0 ? Math.floor(diff / 1000) : 0;
+};
+
 export default function useCountdown(timerEndsAt) {
-  const [timeLeft, setTimeLeft] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(() => calculateDiff(timerEndsAt));
+  const [prevTarget, setPrevTarget] = useState(timerEndsAt);
+
+  if (prevTarget !== timerEndsAt) {
+    setPrevTarget(timerEndsAt);
+    setTimeLeft(calculateDiff(timerEndsAt));
+  }
 
   useEffect(() => {
     if (!timerEndsAt) {
-      setTimeLeft(null);
       return;
     }
 
@@ -21,10 +32,6 @@ export default function useCountdown(timerEndsAt) {
         setTimeLeft(Math.floor(diff / 1000));
       }
     }, 1000);
-
-    // Initial calculation
-    const initialDiff = new Date(timerEndsAt) - new Date();
-    setTimeLeft(initialDiff > 0 ? Math.floor(initialDiff / 1000) : 0);
 
     return () => clearInterval(interval);
   }, [timerEndsAt]);

@@ -12,12 +12,11 @@ export default function ParticipantView() {
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(() => !!localStorage.getItem(`pulse_voted_${code}`));
   
   // Shared text state for Wordcloud, QNA, OpenEnded
   const [word, setWord] = useState('');
-  const [wordCount, setWordCount] = useState(0);
+  const [wordCount, setWordCount] = useState(() => parseInt(localStorage.getItem(`pulse_words_${code}`) || '0', 10));
   const [toast, setToast] = useState('');
 
   // State for Ranking
@@ -27,12 +26,6 @@ export default function ParticipantView() {
   const [ratings, setRatings] = useState({});
 
   useEffect(() => {
-    if (localStorage.getItem(`pulse_voted_${code}`)) {
-      setSubmitted(true);
-    }
-    const savedCount = parseInt(localStorage.getItem(`pulse_words_${code}`) || '0', 10);
-    setWordCount(savedCount);
-
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/rooms/${code}`)
       .then(res => {
         if (!res.ok) throw new Error('Room not found');
@@ -60,10 +53,7 @@ export default function ParticipantView() {
     }
 
     socket.on('roomUpdated', (updatedRoom) => {
-      setRoom(prev => {
-        // Only update room state if it's not breaking user inputs
-        return updatedRoom;
-      });
+      setRoom(updatedRoom);
     });
 
     socket.on('roomDeleted', () => {
@@ -142,7 +132,6 @@ export default function ParticipantView() {
   };
 
   if (loading) return <div className="min-h-screen flex flex-col items-center justify-center"><span>Loading...</span><Footer /></div>;
-  if (error) return <div className="min-h-screen flex flex-col items-center justify-center text-red-400"><span>{error}</span><Footer /></div>;
 
   // Determine if user has reached limit and should see the "Danke" view
   const limit = room?.wordLimit || 4;
