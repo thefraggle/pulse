@@ -42,6 +42,50 @@ const PORT = process.env.PORT || 3001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin'; // Change in production via .env
 const JWT_SECRET = process.env.JWT_SECRET || 'pulse-super-secret-key-123'; // Change in production via .env
 
+// Production Environment Security Warning
+if (process.env.NODE_ENV === 'production') {
+  if (ADMIN_PASSWORD === 'admin' || JWT_SECRET === 'pulse-super-secret-key-123') {
+    console.warn('\x1b[33m[SECURITY WARNING] Running in production with default ADMIN_PASSWORD or JWT_SECRET. Please configure your .env file!\x1b[0m');
+  }
+}
+
+// In-Memory Rate Limiting
+const socketRateLimits = new Map();
+const checkRateLimit = (key, maxRequests = 10, windowMs = 5000) => {
+  const now = Date.now();
+  const record = socketRateLimits.get(key) || { count: 0, resetAt: now + windowMs };
+  if (now > record.resetAt) {
+    record.count = 1;
+    record.resetAt = now + windowMs;
+    socketRateLimits.set(key, record);
+    return true;
+  }
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  record.count++;
+  socketRateLimits.set(key, record);
+  return true;
+};
+
+const loginAttempts = new Map();
+const checkLoginRateLimit = (ip) => {
+  const now = Date.now();
+  const record = loginAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+  if (now > record.resetAt) {
+    record.count = 1;
+    record.resetAt = now + 15 * 60 * 1000;
+    loginAttempts.set(ip, record);
+    return true;
+  }
+  if (record.count >= 10) {
+    return false;
+  }
+  record.count++;
+  loginAttempts.set(ip, record);
+  return true;
+};
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -135,6 +179,11 @@ const filterProfanity = (text) => {
 // --- REST API ---
 
 app.post('/api/auth/login', async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkLoginRateLimit(clientIp)) {
+    return res.status(429).json({ error: 'Too many login attempts. Please try again in a few minutes.' });
+  }
+
   const { username, password } = req.body;
   
   try {
@@ -406,6 +455,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendReaction', ({ code, emoji }) => {
+    if (!checkRateLimit(`react_${socket.id}`, 20, 3000)) return;
     const reactionId = crypto.randomBytes(4).toString('hex');
     io.to(code).emit('reactionReceived', { emoji, id: reactionId });
   });
@@ -464,6 +514,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitVote', async ({ code, optionId }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -480,6 +531,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitWord', async ({ code, text }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -543,6 +595,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitQna', async ({ code, text }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -558,6 +611,7 @@ io.on('connection', (socket) => {
 
   socket.on('upvoteQna', async ({ code, messageId }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 15, 3000)) return;
       await prisma.qnaMessage.update({
         where: { id: messageId },
         data: { upvotes: { increment: 1 } }
@@ -585,6 +639,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitOpenAnswer', async ({ code, text }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -614,6 +669,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitRanking', async ({ code, optionIds }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -635,6 +691,7 @@ io.on('connection', (socket) => {
 
   socket.on('submitRating', async ({ code, ratings }) => {
     try {
+      if (!checkRateLimit(`sub_${socket.id}`, 10, 3000)) return;
       const currentRoom = await prisma.room.findUnique({ where: { code } });
       if (!currentRoom || checkTimer(currentRoom)) return;
 
@@ -656,6 +713,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    socketRateLimits.delete(`react_${socket.id}`);
+    socketRateLimits.delete(`sub_${socket.id}`);
     console.log('Client disconnected:', socket.id);
   });
 });
