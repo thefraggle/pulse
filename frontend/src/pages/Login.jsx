@@ -18,14 +18,14 @@ export default function Login() {
         body: JSON.stringify({ username, password })
       });
       
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         localStorage.setItem('pulse_token', data.token);
         localStorage.setItem('pulse_role', data.role);
         localStorage.setItem('pulse_username', data.username);
         navigate('/dashboard');
       } else {
-        setError('Invalid credentials');
+        setError(data.error || 'Invalid credentials');
       }
     } catch {
       setError('Connection error');

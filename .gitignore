@@ -7,6 +7,9 @@ build
 .DS_Store
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+backend/data/
 frontend/node_modules
 backend/node_modules
 frontend/public/impressum.html
