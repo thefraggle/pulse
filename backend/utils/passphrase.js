@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
-const adjectives = ['blauer', 'roter', 'gruener', 'schlauer', 'schneller', 'leiser', 'mutiger', 'frecher', 'lustiger', 'cooler', 'klarer', 'treuer', 'wilder', 'sanfter', 'starker'];
-const nouns = ['falke', 'elefant', 'tiger', 'pinguin', 'loewe', 'delfin', 'wolf', 'fuchs', 'baer', 'adler', 'hase', 'drache', 'panther', 'luchs', 'kater'];
+const adjectives = ['blue', 'red', 'green', 'swift', 'brave', 'quiet', 'clever', 'wild', 'sharp', 'cool', 'bright', 'noble', 'silent', 'bold', 'epic'];
+const nouns = ['falcon', 'elephant', 'tiger', 'penguin', 'lion', 'dolphin', 'wolf', 'fox', 'bear', 'eagle', 'rabbit', 'dragon', 'panther', 'lynx', 'hawk'];
 
 function generatePassphrase() {
   const adj = adjectives[crypto.randomInt(0, adjectives.length)];

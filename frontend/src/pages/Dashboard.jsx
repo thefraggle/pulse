@@ -440,7 +440,7 @@ export default function Dashboard() {
                         <span className="uppercase text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/70">
                           {r.type}
                         </span>
-                        <span>{new Date(r.createdAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                        <span>{new Date(r.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                         {role === 'SUPERADMIN' && r.user && (
                           <span className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded text-[10px]">
                             {r.user.username}

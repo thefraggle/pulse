@@ -109,7 +109,7 @@ export default function ReportView() {
               CODE: {code}
             </div>
             <div className="text-xs text-white/50 print:text-black/50 mt-1">
-              Generated: {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              Generated: {new Date().toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
         </div>
@@ -131,7 +131,7 @@ export default function ReportView() {
           <div>
             <span className="block text-xs text-white/40 print:text-black/50 uppercase font-semibold">Created At</span>
             <span className="text-sm font-bold text-white print:text-black block mt-1">
-              {new Date(room.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {new Date(room.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           <div>
@@ -330,7 +330,7 @@ export default function ReportView() {
                         <div className="text-xs text-white/40 print:text-black/40 mb-1 flex gap-2">
                           <span className="font-bold text-indigo-400 print:text-indigo-600">Question #{index + 1}</span>
                           <span>•</span>
-                          <span>{new Date(msg.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{new Date(msg.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p className="text-sm text-white/90 print:text-black/90 leading-relaxed break-words">{msg.text}</p>
                       </div>
@@ -355,7 +355,7 @@ export default function ReportView() {
                   {room.openAnswers.map((ans, index) => (
                     <div key={ans.id} className="bg-white/5 p-5 rounded-xl border border-white/5 print:bg-transparent print:border-none print:p-0 print:border-b print:border-black/10 print:rounded-none">
                       <div className="text-xs text-white/40 print:text-black/40 mb-1">
-                        Answer #{index + 1} • {new Date(ans.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                        Answer #{index + 1} • {new Date(ans.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <p className="text-sm text-white/90 print:text-black/90 leading-relaxed break-words">{ans.text}</p>
                     </div>
