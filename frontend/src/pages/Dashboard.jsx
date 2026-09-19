@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
+import Modal from '../components/Modal';
 import { exportRoomToCSV } from '../utils/exportUtils';
 import { startDashboardTour } from '../utils/tourUtils';
 
@@ -20,6 +21,14 @@ export default function Dashboard() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [pwdMessage, setPwdMessage] = useState({ text: '', type: '' });
   const [highlightForm, setHighlightForm] = useState(false);
+
+  // Modal & Loading states
+  const [roomToDelete, setRoomToDelete] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [creatingRoom, setCreatingRoom] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('pulse_token');
@@ -128,6 +137,7 @@ export default function Dashboard() {
       finalOptions = ['Overall Rating'];
     }
 
+    setCreatingRoom(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms`, {
         method: 'POST',
@@ -146,19 +156,24 @@ export default function Dashboard() {
       navigate(`/live/${data.code}`);
     } catch (e) {
       console.error(e);
+      setCreatingRoom(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Really delete?')) return;
+  const confirmDeleteRoom = async () => {
+    if (!roomToDelete) return;
+    setIsDeleting(true);
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms/${id}`, { 
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/rooms/${roomToDelete.id}`, { 
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      fetchRooms();
+      await fetchRooms();
+      setRoomToDelete(null);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -183,6 +198,7 @@ export default function Dashboard() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    setCreatingUser(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users`, {
         method: 'POST',
@@ -202,20 +218,26 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setCreatingUser(false);
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (!confirm('Really delete user and ALL their sessions?')) return;
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users/${id}`, { 
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users/${userToDelete.id}`, { 
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      fetchUsers();
-      fetchRooms();
+      await fetchUsers();
+      await fetchRooms();
+      setUserToDelete(null);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -229,6 +251,7 @@ export default function Dashboard() {
       setPwdMessage({ text: 'New passwords do not match.', type: 'error' });
       return;
     }
+    setSavingPassword(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/users/password`, {
         method: 'PUT',
@@ -249,6 +272,8 @@ export default function Dashboard() {
       }
     } catch {
       setPwdMessage({ text: 'Connection error', type: 'error' });
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -383,8 +408,18 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <button type="submit" className="glow-button py-3 mt-4">
-                Start Session
+              <button 
+                type="submit" 
+                disabled={creatingRoom} 
+                className="glow-button py-3 mt-4 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingRoom && (
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {creatingRoom ? 'Creating Session...' : 'Start Session'}
               </button>
             </form>
           </motion.div>
@@ -417,27 +452,27 @@ export default function Dashboard() {
                       <Link 
                         to={`/live/${r.code}/report`} 
                         target="_blank"
-                        className="p-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 rounded transition-colors flex items-center justify-center" 
+                        className="p-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 rounded transition-colors flex items-center justify-center cursor-pointer" 
                         title="Print / PDF Report"
                       >
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </Link>
-                      <button onClick={() => exportRoomToCSV(r)} className="p-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 rounded transition-colors" title="Export to CSV">
+                      <button onClick={() => exportRoomToCSV(r)} className="p-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 rounded transition-colors cursor-pointer" title="Export to CSV">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                           <polyline points="7 10 12 15 17 10" />
                           <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
                       </button>
-                      <button onClick={() => handleLoadTemplate(r)} className="p-2 bg-white/10 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white" title="Load as template">
+                      <button onClick={() => handleLoadTemplate(r)} className="p-2 bg-white/10 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white cursor-pointer" title="Load as template">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
                           <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(r.id)} className="p-2 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded transition-colors" title="Delete">
+                      <button onClick={() => setRoomToDelete(r)} className="p-2 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded transition-colors cursor-pointer" title="Delete">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
@@ -466,8 +501,18 @@ export default function Dashboard() {
                   required
                 />
               </div>
-              <button type="submit" className="glow-button py-3 mt-2">
-                Generate User & Password
+              <button 
+                type="submit" 
+                disabled={creatingUser} 
+                className="glow-button py-3 mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingUser && (
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {creatingUser ? 'Generating User...' : 'Generate User & Password'}
               </button>
             </form>
 
@@ -496,7 +541,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   {u.role !== 'SUPERADMIN' && (
-                    <button onClick={() => handleDeleteUser(u.id)} className="p-2 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded transition-colors" title="Delete User">
+                    <button onClick={() => setUserToDelete(u)} className="p-2 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded transition-colors cursor-pointer" title="Delete User">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
@@ -546,8 +591,18 @@ export default function Dashboard() {
                   required
                 />
               </div>
-              <button type="submit" className="glow-button py-3 mt-2">
-                Save Password
+              <button 
+                type="submit" 
+                disabled={savingPassword} 
+                className="glow-button py-3 mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingPassword && (
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {savingPassword ? 'Saving...' : 'Save Password'}
               </button>
             </form>
             {pwdMessage.text && (
@@ -558,6 +613,30 @@ export default function Dashboard() {
           </motion.div>
         </div>
       )}
+
+      {/* Delete Room Modal */}
+      <Modal
+        isOpen={!!roomToDelete}
+        onClose={() => setRoomToDelete(null)}
+        title="Delete Session"
+        description={`Are you sure you want to delete session "${roomToDelete?.question || roomToDelete?.code}"? All related data will be lost.`}
+        confirmText="Delete Session"
+        confirmVariant="danger"
+        isConfirmLoading={isDeleting}
+        onConfirm={confirmDeleteRoom}
+      />
+
+      {/* Delete User Modal */}
+      <Modal
+        isOpen={!!userToDelete}
+        onClose={() => setUserToDelete(null)}
+        title="Delete User"
+        description={`Are you sure you want to delete user "${userToDelete?.username}" and ALL of their associated sessions?`}
+        confirmText="Delete User"
+        confirmVariant="danger"
+        isConfirmLoading={isDeleting}
+        onConfirm={confirmDeleteUser}
+      />
 
       <Footer showHelp={true} />
     </div>

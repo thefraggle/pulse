@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
@@ -8,6 +8,8 @@ import Footer from '../components/Footer';
 import useCountdown from '../hooks/useCountdown';
 import { exportRoomToCSV } from '../utils/exportUtils';
 import { startLiveTour } from '../utils/tourUtils';
+import CustomWordcloud from '../components/CustomWordcloud';
+import Modal from '../components/Modal';
 
 const socket = io(import.meta.env.VITE_API_URL || '', {
   auth: {
@@ -17,195 +19,17 @@ const socket = io(import.meta.env.VITE_API_URL || '', {
 
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 
-const CustomWordcloud = ({ words, isAdmin, onWordClick }) => {
-  const containerRef = useRef(null);
-  const [placements, setPlacements] = useState([]);
-
-  const computeLayout = useCallback(() => {
-    if (words.length === 0 || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const cw = container.clientWidth;
-    const ch = container.clientHeight;
-
-    const max = Math.max(...words.map(w => w.value));
-    const min = Math.min(...words.map(w => w.value));
-    const sorted = [...words].sort((a, b) => b.value - a.value);
-
-    // Estimate bounding boxes for each word using a hidden canvas
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const items = sorted.map((w, i) => {
-      let size;
-      if (min === max) {
-        size = Math.min(180, 40 + (w.value * 20));
-      } else {
-        const ratio = (w.value - min) / (max - min);
-        // Exponent < 1 hebt mittlere Werte etwas an, für deutlichere Abstufungen.
-        // Die extremen Größenunterschiede wurden leicht abgemildert, damit auch kleine Wörter lesbar bleiben.
-        size = 32 + (Math.pow(ratio, 0.7) * 160);
-      }
-
-      const hash = w.text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const isVertical = i > 0 && hash % 4 === 0; // ~25% vertical, never first
-
-      ctx.font = `900 ${size}px sans-serif`;
-      const metrics = ctx.measureText(w.text);
-      // Approximate text dimensions
-      const textW = metrics.width;
-      const textH = size * 0.85;
-
-      return {
-        ...w,
-        size,
-        color: COLORS[i % COLORS.length],
-        isVertical,
-        // For vertical text, swap width/height
-        bw: isVertical ? textH : textW,
-        bh: isVertical ? textW : textH,
-        x: 0,
-        y: 0,
-      };
-    });
-
-    // Place words using Archimedean spiral (centered at 0,0)
-    const placed = [];
-    const OVERLAP_TOLERANCE = 0.7; // Allow 30% overlap for organic feel
-    let minX = 0, maxX = 0, minY = 0, maxY = 0;
-
-    for (let idx = 0; idx < items.length; idx++) {
-      const item = items[idx];
-
-      if (idx === 0) {
-        // Biggest word goes dead center
-        item.x = -item.bw / 2;
-        item.y = -item.bh / 2;
-        placed.push(item);
-        minX = item.x;
-        maxX = item.x + item.bw;
-        minY = item.y;
-        maxY = item.y + item.bh;
-        continue;
-      }
-
-      // Spiral search for a good position
-      let angle = 0;
-      const step = 0.3;
-      const radiusStep = 2;
-      let found = false;
-
-      for (let attempt = 0; attempt < 3000; attempt++) {
-        angle += step;
-        const radius = radiusStep * angle;
-        const testX = Math.cos(angle) * radius - item.bw / 2;
-        const testY = Math.sin(angle) * radius - item.bh / 2;
-
-        // Check overlap with placed words (with tolerance)
-        let overlaps = false;
-        for (const p of placed) {
-          const overlapX = Math.max(0, Math.min(testX + item.bw, p.x + p.bw) - Math.max(testX, p.x));
-          const overlapY = Math.max(0, Math.min(testY + item.bh, p.y + p.bh) - Math.max(testY, p.y));
-          const overlapArea = overlapX * overlapY;
-          const smallerArea = Math.min(item.bw * item.bh, p.bw * p.bh);
-          
-          if (overlapArea > smallerArea * (1 - OVERLAP_TOLERANCE)) {
-            overlaps = true;
-            break;
-          }
-        }
-
-        if (!overlaps) {
-          item.x = testX;
-          item.y = testY;
-          found = true;
-          break;
-        }
-      }
-
-      if (found) {
-        placed.push(item);
-        minX = Math.min(minX, item.x);
-        maxX = Math.max(maxX, item.x + item.bw);
-        minY = Math.min(minY, item.y);
-        maxY = Math.max(maxY, item.y + item.bh);
-      }
-    }
-
-    // Now compute scale to fit in container
-    const cloudWidth = maxX - minX;
-    const cloudHeight = maxY - minY;
-    
-    // Add padding (40px)
-    const padding = 40;
-    const availableW = Math.max(10, cw - padding);
-    const availableH = Math.max(10, ch - padding);
-    
-    // Scale down if it doesn't fit
-    const scale = Math.min(1, availableW / cloudWidth, availableH / cloudHeight);
-    
-    // Calculate offsets to center the cloud in the container
-    const offsetX = cw / 2 - ((minX + maxX) / 2) * scale;
-    const offsetY = ch / 2 - ((minY + maxY) / 2) * scale;
-    
-    // Apply scale and offset
-    placed.forEach(p => {
-       p.x = p.x * scale + offsetX;
-       p.y = p.y * scale + offsetY;
-       p.size = p.size * scale;
-       p.bw = p.bw * scale;
-       p.bh = p.bh * scale;
-    });
-
-    setPlacements(placed);
-  }, [words]);
-
-  useEffect(() => {
-    computeLayout();
-  }, [computeLayout]);
-
-  // Recompute on resize
-  useEffect(() => {
-    const observer = new ResizeObserver(() => computeLayout());
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [computeLayout]);
-
-  return (
-    <div ref={containerRef} className="relative w-full h-full overflow-hidden">
-      {placements.map((item, i) => (
-        <motion.span
-          key={`${item.text}-${item.value}`}
-          initial={{ opacity: 0, scale: 0.3 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 180, damping: 18, delay: i * 0.04 }}
-          style={{
-            position: 'absolute',
-            left: `${item.x}px`,
-            top: `${item.y}px`,
-            fontSize: `${item.size}px`,
-            color: item.color,
-            fontWeight: '900',
-            writingMode: item.isVertical ? 'vertical-rl' : 'horizontal-tb',
-            lineHeight: '1',
-            whiteSpace: 'nowrap',
-          }}
-          onClick={() => isAdmin && onWordClick(item)}
-          className={`drop-shadow-[0_0_12px_rgba(255,255,255,0.12)] ${isAdmin ? 'cursor-pointer hover:opacity-50 transition-opacity' : ''}`}
-        >
-          {item.text}
-        </motion.span>
-      ))}
-    </div>
-  );
-};
-
 export default function LivePresentation() {
   const { code } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [showTimerModal, setShowTimerModal] = useState(false);
+  const [timerInput, setTimerInput] = useState('2');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [wordToDelete, setWordToDelete] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const [showJoin, setShowJoin] = useState(true);
   const [reactions, setReactions] = useState([]);
   const isAdmin = !!localStorage.getItem('pulse_token');
@@ -345,16 +169,10 @@ export default function LivePresentation() {
                   if (room.timerEndsAt) {
                     socket.emit('clearTimer', { code, token: localStorage.getItem('pulse_token') });
                   } else {
-                    const minStr = window.prompt("Timer duration in minutes (e.g. 2 or 0.5):", "2");
-                    if (minStr !== null) {
-                      const minutes = parseFloat(minStr.replace(',', '.'));
-                      if (!isNaN(minutes) && minutes > 0) {
-                        socket.emit('startTimer', { code, minutes, token: localStorage.getItem('pulse_token') });
-                      }
-                    }
+                    setShowTimerModal(true);
                   }
                 }} 
-                className={`p-1.5 rounded-md transition-colors ${room.timerEndsAt ? 'text-indigo-400 bg-indigo-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${room.timerEndsAt ? 'text-indigo-400 bg-indigo-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={room.timerEndsAt ? 'Clear Timer' : 'Set Timer'}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -367,7 +185,7 @@ export default function LivePresentation() {
               {/* 3. Hide/Show Results */}
               <button 
                 onClick={() => socket.emit('toggleRoomVisibility', { code, token: localStorage.getItem('pulse_token') })} 
-                className={`p-1.5 rounded-md transition-colors ${room.isHidden ? 'text-green-400 bg-green-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${room.isHidden ? 'text-green-400 bg-green-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={room.isHidden ? 'Show results' : 'Hide results'}
               >
                 {room.isHidden ? (
@@ -382,7 +200,7 @@ export default function LivePresentation() {
               {/* 4. Toggle Reactions */}
               <button 
                 onClick={() => socket.emit('toggleReactions', { code, token: localStorage.getItem('pulse_token') })} 
-                className={`p-1.5 rounded-md transition-colors ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${room.reactionsEnabled ? 'text-red-400 bg-red-400/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                 title={room.reactionsEnabled ? 'Disable Live Reactions' : 'Enable Live Reactions'}
               >
                 <svg className="w-5 h-5" fill={room.reactionsEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
@@ -395,7 +213,7 @@ export default function LivePresentation() {
               {/* 5. Export to CSV */}
               <button 
                 onClick={() => exportRoomToCSV(room)} 
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
+                className="p-1.5 rounded-md transition-colors cursor-pointer text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10"
                 title="Export to CSV"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -411,7 +229,7 @@ export default function LivePresentation() {
               <Link 
                 to={`/live/${code}/report`} 
                 target="_blank"
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
+                className="p-1.5 rounded-md transition-colors cursor-pointer text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
                 title="Print / PDF Report"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -424,7 +242,7 @@ export default function LivePresentation() {
               {/* 7. Remote Control Button (with better smartphone+waves icon) */}
               <button 
                 onClick={() => setShowRemoteModal(true)} 
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
+                className="p-1.5 rounded-md transition-colors cursor-pointer text-white/50 hover:text-indigo-400 hover:bg-indigo-400/10 flex items-center justify-center"
                 title="Remote Control"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -438,12 +256,8 @@ export default function LivePresentation() {
 
               {/* 8. Reset/Clear Room Data */}
               <button 
-                onClick={() => {
-                  if (window.confirm("Are you sure? All previous answers will be deleted.")) {
-                    socket.emit('resetRoom', { code, token: localStorage.getItem('pulse_token') });
-                  }
-                }}
-                className="p-1.5 rounded-md transition-colors text-white/50 hover:text-red-400 hover:bg-red-400/10"
+                onClick={() => setShowResetModal(true)}
+                className="p-1.5 rounded-md transition-colors cursor-pointer text-white/50 hover:text-red-400 hover:bg-red-400/10"
                 title="Clear session"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -544,11 +358,7 @@ export default function LivePresentation() {
               <CustomWordcloud 
                 words={wordcloudData} 
                 isAdmin={isAdmin} 
-                onWordClick={(word) => {
-                  if (window.confirm(`Delete word "${word.text}"?`)) {
-                    socket.emit('deleteWord', { code, wordId: word.id, token: localStorage.getItem('pulse_token') });
-                  }
-                }} 
+                onWordClick={(word) => setWordToDelete(word)} 
               />
             )}
           </div>
@@ -573,7 +383,7 @@ export default function LivePresentation() {
                    {isAdmin && (
                      <button
                        onClick={() => socket.emit('deleteQna', { code, messageId: msg.id, token: localStorage.getItem('pulse_token') })}
-                       className="absolute top-4 right-4 text-white/20 hover:text-red-400 transition-colors"
+                       className="absolute top-4 right-4 text-white/20 hover:text-red-400 transition-colors cursor-pointer"
                        title="Delete question"
                      >
                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -605,7 +415,7 @@ export default function LivePresentation() {
                    {isAdmin && (
                      <button
                        onClick={() => socket.emit('deleteOpenAnswer', { code, answerId: ans.id, token: localStorage.getItem('pulse_token') })}
-                       className="absolute top-2 right-2 text-white/20 hover:text-red-400 transition-colors"
+                       className="absolute top-2 right-2 text-white/20 hover:text-red-400 transition-colors cursor-pointer"
                        title="Delete contribution"
                      >
                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -674,58 +484,127 @@ export default function LivePresentation() {
         ))}
       </div>
 
-      {/* Remote Control Modal */}
-      {showRemoteModal && (
-        <div 
-          onClick={() => setShowRemoteModal(false)}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-pointer"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[#0d0f1a] border border-white/20 p-8 rounded-2xl max-w-sm w-full text-center relative shadow-2xl cursor-default"
-          >
-            <button 
-              onClick={() => setShowRemoteModal(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h3 className="text-xl font-bold text-white mb-2">Presenter Remote Control</h3>
-            <p className="text-xs text-white/50 mb-6">
-              Scan this QR code with your smartphone to control this session directly from your phone.
-            </p>
-            <div className="bg-white p-4 rounded-xl inline-block mb-6">
-              <QRCodeSVG 
-                value={`${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(localStorage.getItem('pulse_token') || '')}&r=${encodeURIComponent(localStorage.getItem('pulse_role') || '')}&u=${encodeURIComponent(localStorage.getItem('pulse_username') || '')}`} 
-                size={200} 
-              />
-            </div>
-            <div className="flex flex-col gap-2">
+      {/* Timer Modal */}
+      <Modal
+        isOpen={showTimerModal}
+        onClose={() => setShowTimerModal(false)}
+        title="Set Session Timer"
+        description="Select or enter the duration in minutes for this interactive session."
+        confirmText="Start Timer"
+        onConfirm={() => {
+          const minutes = parseFloat(timerInput.replace(',', '.'));
+          if (!isNaN(minutes) && minutes > 0) {
+            socket.emit('startTimer', { code, minutes, token: localStorage.getItem('pulse_token') });
+            setShowTimerModal(false);
+          }
+        }}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 2, 5, 10].map(m => (
               <button
-                onClick={() => {
-                  const token = localStorage.getItem('pulse_token');
-                  const role = localStorage.getItem('pulse_role');
-                  const username = localStorage.getItem('pulse_username');
-                  const url = `${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(token || '')}&r=${encodeURIComponent(role || '')}&u=${encodeURIComponent(username || '')}`;
-                  navigator.clipboard.writeText(url);
-                  alert('Copied link to clipboard!');
-                }}
-                className="glow-button py-2.5 text-sm font-bold w-full cursor-pointer"
+                key={m}
+                type="button"
+                onClick={() => setTimerInput(m.toString())}
+                className={`py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
+                  timerInput === m.toString() 
+                    ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]' 
+                    : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                }`}
               >
-                Copy Link
+                {m} Min
               </button>
-              <button 
-                onClick={() => setShowRemoteModal(false)}
-                className="py-2 text-sm text-white/50 hover:text-white cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
+            ))}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-white/60 mb-1.5">Custom Duration (Minutes)</label>
+            <input
+              type="number"
+              min="0.5"
+              step="0.5"
+              value={timerInput}
+              onChange={(e) => setTimerInput(e.target.value)}
+              className="glass-input w-full text-base font-mono"
+              placeholder="e.g. 3"
+              autoFocus
+            />
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Reset Room Modal */}
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Reset Session Data"
+        description="Are you sure you want to reset this session? All submitted votes, words, and questions will be permanently deleted."
+        confirmText="Reset All Data"
+        confirmVariant="danger"
+        onConfirm={() => {
+          socket.emit('resetRoom', { code, token: localStorage.getItem('pulse_token') });
+          setShowResetModal(false);
+        }}
+      />
+
+      {/* Delete Word Modal */}
+      <Modal
+        isOpen={!!wordToDelete}
+        onClose={() => setWordToDelete(null)}
+        title="Delete Word"
+        description={`Do you want to permanently remove "${wordToDelete?.text}" from this wordcloud?`}
+        confirmText="Delete Word"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (wordToDelete) {
+            socket.emit('deleteWord', { code, wordId: wordToDelete.id, token: localStorage.getItem('pulse_token') });
+            setWordToDelete(null);
+          }
+        }}
+      />
+
+      {/* Remote Control Modal */}
+      <Modal
+        isOpen={showRemoteModal}
+        onClose={() => {
+          setShowRemoteModal(false);
+          setCopySuccess(false);
+        }}
+        title="Presenter Remote Control"
+        description="Scan this QR code with your smartphone or copy the link to control the session in real-time."
+      >
+        <div className="flex flex-col items-center">
+          <div className="bg-white p-4 rounded-2xl inline-block mb-4 shadow-xl">
+            <QRCodeSVG 
+              value={`${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(localStorage.getItem('pulse_token') || '')}&r=${encodeURIComponent(localStorage.getItem('pulse_role') || '')}&u=${encodeURIComponent(localStorage.getItem('pulse_username') || '')}`} 
+              size={190} 
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const token = localStorage.getItem('pulse_token');
+              const role = localStorage.getItem('pulse_role');
+              const username = localStorage.getItem('pulse_username');
+              const url = `${window.location.protocol}//${window.location.host}/remote/${code}?t=${encodeURIComponent(token || '')}&r=${encodeURIComponent(role || '')}&u=${encodeURIComponent(username || '')}`;
+              navigator.clipboard.writeText(url);
+              setCopySuccess(true);
+              setTimeout(() => setCopySuccess(false), 3000);
+            }}
+            className="glow-button py-2.5 px-6 text-sm font-bold w-full cursor-pointer flex items-center justify-center gap-2"
+          >
+            {copySuccess ? (
+              <>
+                <svg className="w-4 h-4 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Copied Link!
+              </>
+            ) : (
+              'Copy Remote Link'
+            )}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
