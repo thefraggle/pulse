@@ -1,29 +1,32 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 
 export default function Home() {
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState(searchParams.get('error') === 'notfound' ? 'Room not found' : '');
+  const [error, setError] = useState(searchParams.get('error') === 'notfound' ? t('home.roomNotFound') : '');
   const [loading, setLoading] = useState(false);
 
   const handleJoin = async (e) => {
     e.preventDefault();
     if (code.trim().length === 6) {
       setLoading(true);
+      setError('');
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/rooms/${code.toUpperCase()}`);
         if (!res.ok) {
-          setError('Room not found');
+          setError(t('home.roomNotFound'));
           setLoading(false);
           return;
         }
         navigate(`/${code.toUpperCase()}`);
       } catch {
-        setError('Connection error');
+        setError(t('home.connectionError'));
         setLoading(false);
       }
     }
@@ -47,18 +50,18 @@ export default function Home() {
             <h1 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400 leading-none">
               Pulse
             </h1>
-            <p className="text-white/50 text-sm mt-1">Feel the Pulse</p>
+            <p className="text-white/50 text-sm mt-1">{t('home.title')}</p>
           </div>
         </div>
 
         <form onSubmit={handleJoin} className="glass-card p-8 flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Join Code</label>
+            <label className="block text-sm font-medium text-white/70 mb-2">{t('home.codePlaceholder')}</label>
             <input
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="e.g. ABC123"
+              placeholder="ABC123"
               maxLength={6}
               className="glass-input w-full text-center text-2xl tracking-widest uppercase font-mono"
               required
@@ -69,8 +72,8 @@ export default function Home() {
               {error}
             </div>
           )}
-          <button type="submit" disabled={loading} className="glow-button w-full py-3 mt-2 disabled:opacity-50">
-            {loading ? 'Checking...' : 'Join'}
+          <button type="submit" disabled={loading} className="glow-button w-full py-3 mt-2 disabled:opacity-50 cursor-pointer">
+            {loading ? t('common.loading') : t('home.join')}
           </button>
         </form>
       </motion.div>

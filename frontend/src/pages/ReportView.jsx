@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 import CustomWordcloud from '../components/CustomWordcloud';
 
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 
 export default function ReportView() {
+  const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
@@ -72,10 +74,10 @@ export default function ReportView() {
       <div className="sticky top-0 bg-[#0d0f1a]/85 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center z-50 print:hidden max-w-5xl mx-auto rounded-b-2xl">
         <div className="flex gap-4 items-center">
           <Link to="/dashboard" className="text-white/60 hover:text-white text-sm bg-white/5 px-4 py-2 rounded-lg transition-colors border border-white/5">
-            &larr; Dashboard
+            &larr; {t('report.backToDashboard')}
           </Link>
           <Link to={`/live/${code}`} className="text-white/60 hover:text-white text-sm bg-white/5 px-4 py-2 rounded-lg transition-colors border border-white/5">
-            Live View
+            {t('dashboard.present')}
           </Link>
         </div>
         <button
@@ -87,7 +89,7 @@ export default function ReportView() {
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
             <rect x="6" y="14" width="12" height="8" />
           </svg>
-          Print / Save as PDF
+          {t('report.printPdf')}
         </button>
       </div>
 
@@ -98,7 +100,7 @@ export default function ReportView() {
         <div className="border-b-2 border-indigo-500/20 pb-8 mb-8 flex justify-between items-end print:border-black/10">
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight text-white print:text-black">
-              Session Report
+              {t('report.title')}
             </h1>
             <p className="text-indigo-400 font-semibold mt-1 print:text-indigo-600">
               Pulse • Interactive Surveys

@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 import useCountdown from '../hooks/useCountdown';
 import { exportRoomToCSV } from '../utils/exportUtils';
@@ -20,6 +21,7 @@ const socket = io(import.meta.env.VITE_API_URL || '', {
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 
 export default function LivePresentation() {
+  const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
@@ -281,7 +283,7 @@ export default function LivePresentation() {
         {showJoin && (
           <div className="glass-card px-8 py-4 flex items-center gap-6" id="tour-join-info">
             <div className="text-center">
-              <p className="text-sm text-white/60 mb-1 uppercase tracking-widest font-semibold">Join via {window.location.host}</p>
+              <p className="text-sm text-white/60 mb-1 uppercase tracking-widest font-semibold">{t('live.joinAt')} {window.location.host}</p>
               <p className="text-5xl font-mono tracking-widest font-bold text-indigo-400">{code}</p>
             </div>
             <div className="bg-white p-2 rounded-xl">
@@ -303,11 +305,11 @@ export default function LivePresentation() {
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto">
         <h2 className="text-4xl font-bold mb-12 text-center relative z-10">
           {room.question || (
-            room.type === 'POLL' ? 'Poll' :
-            room.type === 'QNA' ? 'Q&A' :
-            room.type === 'OPEN_ENDED' ? 'Brainstorming' :
-            room.type === 'RANKING' ? 'Ranking' : 
-            room.type === 'RATING' ? 'Rating' : 'Wordcloud'
+            room.type === 'POLL' ? t('dashboard.types.POLL') :
+            room.type === 'QNA' ? t('dashboard.types.QNA') :
+            room.type === 'OPEN_ENDED' ? t('dashboard.types.OPEN_ENDED') :
+            room.type === 'RANKING' ? t('dashboard.types.RANKING') : 
+            room.type === 'RATING' ? t('dashboard.types.RATING') : t('dashboard.types.WORDCLOUD')
           )}
         </h2>
 
@@ -318,7 +320,7 @@ export default function LivePresentation() {
               <svg className="w-20 h-20 text-white/40 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
               </svg>
-              <h3 className="text-3xl font-bold text-white/80">Results hidden</h3>
+              <h3 className="text-3xl font-bold text-white/80">{t('live.resultsHidden')}</h3>
             </div>
           )}
           

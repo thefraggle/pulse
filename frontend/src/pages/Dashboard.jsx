@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 import Modal from '../components/Modal';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { exportRoomToCSV } from '../utils/exportUtils';
 import { startDashboardTour } from '../utils/tourUtils';
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [rooms, setRooms] = useState([]);
   const [users, setUsers] = useState([]);
   const [type, setType] = useState('WORDCLOUD');
@@ -286,43 +289,46 @@ export default function Dashboard() {
   const addOption = () => setOptions([...options, '']);
 
   return (
-    <div className="min-h-screen p-8 max-w-5xl mx-auto">
+    <div className="min-h-screen p-8 max-w-5xl mx-auto flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-white/50 text-sm mt-1">Logged in as: <span className="text-white">{username}</span></p>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          <p className="text-white/50 text-sm mt-1">{t('dashboard.welcome')}, <span className="text-white font-medium">{username}</span></p>
         </div>
-        <button 
-          onClick={() => {
-            localStorage.removeItem('pulse_token');
-            localStorage.removeItem('pulse_role');
-            localStorage.removeItem('pulse_username');
-            navigate('/login');
-          }}
-          className="text-white/50 hover:text-white"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <button 
+            onClick={() => {
+              localStorage.removeItem('pulse_token');
+              localStorage.removeItem('pulse_role');
+              localStorage.removeItem('pulse_username');
+              navigate('/login');
+            }}
+            className="text-white/50 hover:text-white transition-colors cursor-pointer text-sm"
+          >
+            {t('common.logout')}
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-4 mb-8 border-b border-white/10 pb-2">
         <button 
-          className={`font-bold pb-2 ${activeTab === 'rooms' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50'}`}
+          className={`font-bold pb-2 cursor-pointer transition-colors ${activeTab === 'rooms' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50 hover:text-white'}`}
           onClick={() => setActiveTab('rooms')}
         >
-          Sessions
+          {t('dashboard.activeSessions')}
         </button>
         {role === 'SUPERADMIN' && (
           <button 
-            className={`font-bold pb-2 ${activeTab === 'users' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50'}`}
+            className={`font-bold pb-2 cursor-pointer transition-colors ${activeTab === 'users' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50 hover:text-white'}`}
             onClick={() => setActiveTab('users')}
           >
-            User Management
+            {t('dashboard.usersTab')}
           </button>
         )}
         {role !== 'SUPERADMIN' && (
           <button 
-            className={`font-bold pb-2 ${activeTab === 'settings' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50'}`}
+            className={`font-bold pb-2 cursor-pointer transition-colors ${activeTab === 'settings' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-white/50 hover:text-white'}`}
             onClick={() => setActiveTab('settings')}
           >
             Settings
@@ -338,46 +344,46 @@ export default function Dashboard() {
             className={`glass-card p-6 transition-all duration-500 ${highlightForm ? 'ring-2 ring-indigo-500 border-transparent shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-[1.02]' : ''}`} 
             id="tour-create-session"
           >
-            <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Create New Session</h2>
+            <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">{t('dashboard.newSession')}</h2>
             <form onSubmit={handleCreateRoom} className="flex flex-col gap-4">
               <div>
-                <label className="block text-sm text-white/70 mb-2">Type</label>
+                <label className="block text-sm text-white/70 mb-2">{t('dashboard.sessionType')}</label>
                 <select 
                   value={type} 
                   onChange={(e) => setType(e.target.value)}
                   className="glass-input w-full bg-black/20"
                 >
-                  <option value="WORDCLOUD">Wordcloud</option>
-                  <option value="POLL">Poll</option>
-                  <option value="QNA">Q&A (Questions & Answers)</option>
-                  <option value="OPEN_ENDED">Open Ended (Brainstorming)</option>
-                  <option value="RANKING">Ranking (Prioritization)</option>
-                  <option value="RATING">Rating Scale</option>
+                  <option value="WORDCLOUD">{t('dashboard.types.WORDCLOUD')}</option>
+                  <option value="POLL">{t('dashboard.types.POLL')}</option>
+                  <option value="QNA">{t('dashboard.types.QNA')}</option>
+                  <option value="OPEN_ENDED">{t('dashboard.types.OPEN_ENDED')}</option>
+                  <option value="RANKING">{t('dashboard.types.RANKING')}</option>
+                  <option value="RATING">{t('dashboard.types.RATING')}</option>
                 </select>
                 <div className="text-xs text-white/50 mt-2 bg-white/5 p-2 rounded border border-white/5">
-                  {type === 'WORDCLOUD' && 'Collects terms from participants and displays them as a dynamic word cloud. Frequent terms appear larger.'}
-                  {type === 'POLL' && 'Classic single-choice poll. Participants choose exactly one of the predefined answers.'}
-                  {type === 'QNA' && 'Participants can submit their own questions and upvote questions from others.'}
-                  {type === 'OPEN_ENDED' && 'Collects free-text answers to a question. Ideal for brainstorming or detailed feedback.'}
-                  {type === 'RANKING' && 'Participants sort the given options into their preferred order.'}
-                  {type === 'RATING' && 'Participants rate given statements or options on a 5-star scale.'}
+                  {type === 'WORDCLOUD' && (t('dashboard.types.WORDCLOUD_DESC') || 'Collects terms from participants and displays them as a dynamic word cloud.')}
+                  {type === 'POLL' && (t('dashboard.types.POLL_DESC') || 'Classic single-choice poll.')}
+                  {type === 'QNA' && (t('dashboard.types.QNA_DESC') || 'Participants can submit their own questions and upvote.')}
+                  {type === 'OPEN_ENDED' && (t('dashboard.types.OPEN_ENDED_DESC') || 'Collects free-text answers to a question.')}
+                  {type === 'RANKING' && (t('dashboard.types.RANKING_DESC') || 'Participants sort options into preferred order.')}
+                  {type === 'RATING' && (t('dashboard.types.RATING_DESC') || 'Participants rate statements on a 5-star scale.')}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-white/70 mb-2">Question / Title</label>
+                <label className="block text-sm text-white/70 mb-2">{t('dashboard.question')}</label>
                 <input
                   type="text"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="e.g. How are you today?"
+                  placeholder={t('dashboard.questionPlaceholder')}
                   className="glass-input w-full text-sm"
                 />
               </div>
 
               {type === 'WORDCLOUD' && (
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">Submissions per participant</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('participant.wordLimit', { count: wordLimit })}</label>
                   <input
                     type="number"
                     min="1"
@@ -391,7 +397,7 @@ export default function Dashboard() {
 
               {(type === 'POLL' || type === 'RANKING' || type === 'RATING') && (
                 <div className="flex flex-col gap-2 mt-2">
-                  <label className="block text-sm text-white/70">Options</label>
+                  <label className="block text-sm text-white/70">{t('dashboard.pollOptions')}</label>
                   {options.map((opt, i) => (
                     <input
                       key={i}
@@ -402,8 +408,8 @@ export default function Dashboard() {
                       className="glass-input w-full text-sm py-2"
                     />
                   ))}
-                  <button type="button" onClick={addOption} className="text-sm text-indigo-400 text-left mt-1 hover:text-indigo-300">
-                    + Add Option
+                  <button type="button" onClick={addOption} className="text-sm text-indigo-400 text-left mt-1 hover:text-indigo-300 cursor-pointer">
+                    + {t('dashboard.addOption')}
                   </button>
                 </div>
               )}
@@ -419,15 +425,15 @@ export default function Dashboard() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 )}
-                {creatingRoom ? 'Creating Session...' : 'Start Session'}
+                {creatingRoom ? t('common.loading') : t('dashboard.create')}
               </button>
             </form>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6" id="tour-active-sessions">
-            <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Active Sessions</h2>
+            <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">{t('dashboard.activeSessions')}</h2>
             {!rooms || rooms.length === 0 ? (
-              <p className="text-white/40 italic">No active sessions</p>
+              <p className="text-white/40 italic">{t('dashboard.noSessions')}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {rooms?.map(r => (
@@ -618,9 +624,9 @@ export default function Dashboard() {
       <Modal
         isOpen={!!roomToDelete}
         onClose={() => setRoomToDelete(null)}
-        title="Delete Session"
-        description={`Are you sure you want to delete session "${roomToDelete?.question || roomToDelete?.code}"? All related data will be lost.`}
-        confirmText="Delete Session"
+        title={t('dashboard.deleteConfirmTitle')}
+        description={`${t('dashboard.deleteConfirmText')} ("${roomToDelete?.question || roomToDelete?.code}")`}
+        confirmText={t('common.delete')}
         confirmVariant="danger"
         isConfirmLoading={isDeleting}
         onConfirm={confirmDeleteRoom}
@@ -630,9 +636,9 @@ export default function Dashboard() {
       <Modal
         isOpen={!!userToDelete}
         onClose={() => setUserToDelete(null)}
-        title="Delete User"
+        title={t('common.delete')}
         description={`Are you sure you want to delete user "${userToDelete?.username}" and ALL of their associated sessions?`}
-        confirmText="Delete User"
+        confirmText={t('common.delete')}
         confirmVariant="danger"
         isConfirmLoading={isDeleting}
         onConfirm={confirmDeleteUser}

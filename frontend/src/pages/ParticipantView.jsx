@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, Reorder } from 'framer-motion';
 import { io } from 'socket.io-client';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 import useCountdown from '../hooks/useCountdown';
 
 const socket = io(import.meta.env.VITE_API_URL || '');
 
 export default function ParticipantView() {
+  const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
@@ -150,14 +152,14 @@ export default function ParticipantView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Session paused</h2>
-          <p className="text-white/60 mb-8">The moderator has temporarily closed the voting.</p>
+          <h2 className="text-2xl font-bold mb-2">{t('participant.sessionLocked')}</h2>
+          <p className="text-white/60 mb-8">{isExpired ? t('participant.sessionEnded') : t('live.sessionClosed')}</p>
           <div className="flex flex-col gap-4 mt-2">
             <Link to={`/live/${code}`} className="glass-button w-full py-3 flex items-center justify-center gap-2 text-indigo-300 hover:text-indigo-200">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              View Live Results
+              {t('dashboard.present')}
             </Link>
           </div>
         </motion.div>
@@ -175,11 +177,10 @@ export default function ParticipantView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Thank you!</h2>
-          <p className="text-white/60 mb-8">Your answer has been submitted.</p>
+          <h2 className="text-2xl font-bold mb-2">{t('participant.alreadySubmitted')}</h2>
           
           <div className="p-4 bg-white/5 rounded-xl border border-white/10 mb-6">
-            <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Join Code for others</p>
+            <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">{t('live.code')}</p>
             <p className="text-3xl font-mono tracking-widest font-bold text-indigo-400">{code}</p>
           </div>
 
@@ -191,7 +192,7 @@ export default function ParticipantView() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              View Live Results
+              {t('dashboard.present')}
             </Link>
             
             <Link 
@@ -201,7 +202,7 @@ export default function ParticipantView() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back to Home
+              {t('login.backToHome')}
             </Link>
           </div>
         </motion.div>

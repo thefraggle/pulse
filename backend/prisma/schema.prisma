@@ -54,6 +54,7 @@ model QnaMessage {
   id        String   @id @default(uuid())
   text      String
   upvotes   Int      @default(0)
+  approved  Boolean  @default(true) // Vorbereitung für Q&A Moderation (Issue #6)
   createdAt DateTime @default(now())
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId    String
