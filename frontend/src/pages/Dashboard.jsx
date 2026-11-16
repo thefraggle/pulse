@@ -418,11 +418,11 @@ export default function Dashboard() {
       </nav>
 
       {activeTab === 'rooms' && (
-        <div className="grid md:grid-cols-[4fr_7fr] gap-8">
+        <div className="grid md:grid-cols-[minmax(280px,4fr)_minmax(0,7fr)] gap-8 items-start">
           <motion.div 
             initial={{ opacity: 0, x: -20 }} 
             animate={{ opacity: 1, x: 0 }} 
-            className={`glass-card p-6 transition-all duration-500 ${highlightForm ? 'ring-2 ring-indigo-500 border-transparent shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-[1.01]' : ''}`} 
+            className={`glass-card p-6 min-w-0 transition-all duration-500 ${highlightForm ? 'ring-2 ring-indigo-500 border-transparent shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-[1.01]' : ''}`} 
             id="tour-create-session"
           >
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">{t('dashboard.newSession')}</h2>
@@ -534,7 +534,7 @@ export default function Dashboard() {
             </form>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6" id="tour-active-sessions">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6 min-w-0" id="tour-active-sessions">
             <div className="flex flex-wrap justify-between items-center gap-3 mb-6 border-b border-white/10 pb-4">
               <h2 className="text-xl font-bold">{t('dashboard.activeSessions')}</h2>
               {rooms.length > 0 && (
@@ -650,8 +650,8 @@ export default function Dashboard() {
       )}
 
       {activeTab === 'users' && role === 'SUPERADMIN' && (
-        <div className="grid md:grid-cols-[4fr_7fr] gap-8">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6">
+        <div className="grid md:grid-cols-[minmax(280px,4fr)_minmax(0,7fr)] gap-8 items-start">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6 min-w-0">
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">{t('dashboard.createUserTitle')}</h2>
             <form onSubmit={handleCreateUser} className="flex flex-col gap-4">
               <div>
@@ -702,7 +702,7 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6 min-w-0">
             <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">{t('dashboard.allUsers')}</h2>
             <div className="flex flex-col gap-3">
               {users?.map(u => (
