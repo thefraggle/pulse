@@ -1,76 +1,114 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
+import Modal from '../components/Modal';
 import useCountdown from '../hooks/useCountdown';
-
-const socket = io(import.meta.env.VITE_API_URL || '', {
-  auth: {
-    token: localStorage.getItem('pulse_token') || ''
-  }
-});
+import useSocket from '../hooks/useSocket';
 
 export default function RemoteControl() {
+  const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
-  
-  // Auth state
+
+  // Auth state (supports legacy ?t=&r=&u= and new ?ticket= seamlessly)
   const [token, setToken] = useState(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const t = searchParams.get('t');
-    const r = searchParams.get('r');
-    const u = searchParams.get('u');
-    if (t && r && u) {
-      localStorage.setItem('pulse_token', t);
-      localStorage.setItem('pulse_role', r);
-      localStorage.setItem('pulse_username', u);
-      return t;
+    const tParam = searchParams.get('t');
+    const rParam = searchParams.get('r');
+    const uParam = searchParams.get('u');
+    if (tParam && rParam && uParam) {
+      localStorage.setItem('pulse_token', tParam);
+      localStorage.setItem('pulse_role', rParam);
+      localStorage.setItem('pulse_username', uParam);
+      return tParam;
     }
-    return localStorage.getItem('pulse_token');
+    return localStorage.getItem('pulse_token') || '';
   });
+
+  const [exchangingTicket, setExchangingTicket] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    return searchParams.has('ticket');
+  });
+
+  const socket = useSocket(token);
+
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
   // Room state
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timerMinutes, setTimerMinutes] = useState('2');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [roomDeleted, setRoomDeleted] = useState(false);
 
-  // Clean query parameters from URL if scanned from QR code
+  const usernameId = useId();
+  const passwordId = useId();
+
+  // Exchange one-time ticket and clean sensitive query params from URL
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('t')) {
+    const ticket = searchParams.get('ticket');
+    if (searchParams.has('t') || ticket) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+    if (!ticket) return;
+
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/exchange-ticket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket })
+    })
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error('Invalid ticket'))))
+      .then(data => {
+        localStorage.setItem('pulse_token', data.token);
+        localStorage.setItem('pulse_role', data.role);
+        localStorage.setItem('pulse_username', data.username);
+        setToken(data.token);
+      })
+      .catch(() => {
+        // Fallback to manual login form if ticket expired
+      })
+      .finally(() => {
+        setExchangingTicket(false);
+      });
   }, []);
 
-  // Fetch room data and connect socket
+  // Fetch room data
   useEffect(() => {
     if (!token) return;
 
+    let active = true;
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/rooms/${code}`)
       .then(res => {
         if (!res.ok) throw new Error('Room not found');
         return res.json();
       })
       .then(data => {
+        if (!active) return;
         setRoom(data);
         setLoading(false);
       })
       .catch(() => {
-        navigate('/dashboard');
+        if (active) navigate('/dashboard');
       });
+
+    return () => {
+      active = false;
+    };
+  }, [code, navigate, token]);
+
+  // Bind socket listeners
+  useEffect(() => {
+    if (!socket || !token) return;
 
     const handleConnect = () => {
       socket.emit('joinRoom', code);
     };
-
-    socket.on('connect', handleConnect);
-    if (socket.connected) {
-      handleConnect();
-    }
 
     const handleRoomUpdated = (updatedRoom) => {
       if (updatedRoom.code === code.toUpperCase()) {
@@ -78,19 +116,23 @@ export default function RemoteControl() {
       }
     };
 
-    socket.on('roomUpdated', handleRoomUpdated);
+    const handleRoomDeleted = () => {
+      setRoomDeleted(true);
+    };
 
-    socket.on('roomDeleted', () => {
-      alert('Room has been deleted');
-      navigate('/dashboard');
-    });
+    socket.on('connect', handleConnect);
+    if (socket.connected) {
+      handleConnect();
+    }
+    socket.on('roomUpdated', handleRoomUpdated);
+    socket.on('roomDeleted', handleRoomDeleted);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('roomUpdated', handleRoomUpdated);
-      socket.off('roomDeleted');
+      socket.off('roomDeleted', handleRoomDeleted);
     };
-  }, [code, navigate, token]);
+  }, [socket, code, token]);
 
   const { formattedTime, isExpired } = useCountdown(room?.timerEndsAt);
 
@@ -98,6 +140,7 @@ export default function RemoteControl() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
+    setLoggingIn(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, {
         method: 'POST',
@@ -111,16 +154,18 @@ export default function RemoteControl() {
         localStorage.setItem('pulse_username', data.username);
         setToken(data.token);
       } else {
-        setLoginError(data.error || 'Login failed');
+        setLoginError(data.error ? (t(`login.${data.error}`) || data.error) : t('login.invalidCredentials'));
       }
     } catch {
-      setLoginError('Connection error');
+      setLoginError(t('login.connectionError'));
+    } finally {
+      setLoggingIn(false);
     }
   };
 
   // Socket action emitters
   const emitAction = (eventName, payload = {}) => {
-    socket.emit(eventName, { code, token: localStorage.getItem('pulse_token'), ...payload });
+    socket?.emit(eventName, { code, token: localStorage.getItem('pulse_token'), ...payload });
   };
 
   const handleStartTimer = (minutes) => {
@@ -130,50 +175,67 @@ export default function RemoteControl() {
     }
   };
 
+  if (exchangingTicket) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white/75" role="status" aria-live="polite">
+        {t('common.loading')}
+      </div>
+    );
+  }
+
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="glass-card p-8 w-full max-w-md"
         >
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold">Pulse Remote</h1>
-            <p className="text-white/60 text-sm mt-1">Authenticate to control session {code}</p>
+            <h1 className="text-3xl font-bold">{t('remote.title')}</h1>
+            <p className="text-white/75 text-sm mt-1">{t('remote.authSubtitle', { code })}</p>
           </div>
-          
+
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm text-white/70 mb-1">Username</label>
+              <label htmlFor={usernameId} className="block text-sm text-white/80 mb-1">{t('login.username')}</label>
               <input
+                id={usernameId}
+                name="username"
                 type="text"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
+                autoComplete="username"
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
                 className="glass-input w-full text-sm"
                 required
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm text-white/70 mb-1">Password</label>
+              <label htmlFor={passwordId} className="block text-sm text-white/80 mb-1">{t('login.password')}</label>
               <input
+                id={passwordId}
+                name="password"
                 type="password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
+                autoComplete="current-password"
                 className="glass-input w-full text-sm"
                 required
               />
             </div>
 
             {loginError && (
-              <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">
+              <div role="alert" className="text-red-300 text-sm text-center bg-red-500/15 py-2 px-3 rounded-lg border border-red-500/30">
                 {loginError}
               </div>
             )}
 
-            <button type="submit" className="glow-button py-3 mt-2">
-              Log In & Control
+            <button type="submit" disabled={loggingIn} className="glow-button min-h-11 py-3 mt-2 cursor-pointer">
+              {loggingIn ? t('common.loading') : t('remote.loginAndControl')}
             </button>
           </form>
         </motion.div>
@@ -182,10 +244,24 @@ export default function RemoteControl() {
     );
   }
 
+  if (roomDeleted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="glass-card p-8 max-w-md w-full text-center space-y-4">
+          <h1 className="text-xl font-bold text-white">{t('remote.roomDeleted')}</h1>
+          <Link to="/dashboard" className="glow-button inline-flex items-center justify-center min-h-11 px-6 py-3 w-full">
+            {t('report.backToDashboard')}
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   if (loading || !room) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-white/50 animate-pulse">Loading Remote Panel...</p>
+      <div className="min-h-screen flex items-center justify-center" role="status" aria-live="polite">
+        <p className="text-white/75">{t('common.loading')}</p>
       </div>
     );
   }
@@ -197,11 +273,17 @@ export default function RemoteControl() {
       <div>
         {/* Top bar navigation */}
         <div className="flex justify-between items-center mb-6">
-          <Link to="/dashboard" className="text-white/50 hover:text-white px-3 py-1.5 bg-white/5 rounded-lg text-xs">
-            &larr; Dashboard
+          <Link
+            to="/dashboard"
+            className="min-h-11 inline-flex items-center text-white/80 hover:text-white px-3.5 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          >
+            &larr; {t('common.dashboard')}
           </Link>
-          <Link to={`/live/${code}`} className="text-indigo-400 hover:text-indigo-300 px-3 py-1.5 bg-indigo-500/10 rounded-lg text-xs font-bold">
-            Live View &rarr;
+          <Link
+            to={`/live/${code}`}
+            className="min-h-11 inline-flex items-center text-indigo-300 hover:text-indigo-200 px-3.5 py-2 bg-indigo-500/15 hover:bg-indigo-500/25 rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          >
+            {t('dashboard.present')} &rarr;
           </Link>
         </div>
 
@@ -209,23 +291,23 @@ export default function RemoteControl() {
         <div className="glass-card p-4 mb-4">
           <div className="flex justify-between items-start mb-2">
             <span className="text-2xl font-mono font-bold text-indigo-400 tracking-widest">{code}</span>
-            <span className="uppercase text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded text-white/70">
+            <span className="uppercase text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded text-white/85">
               {room.type}
             </span>
           </div>
-          <h2 className="text-lg font-bold text-white leading-tight">
-            {room.question || 'Untitled Session'}
-          </h2>
+          <h1 className="text-lg font-bold text-white leading-tight">
+            {room.question || t('remote.untitled')}
+          </h1>
           <div className="flex gap-2 mt-3 flex-wrap">
-            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isLocked ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-green-500/20 text-green-300 border border-green-500/30'}`}>
-              {isLocked ? 'Closed / Paused' : 'Open / Accepting'}
+            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${isLocked ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-green-500/20 text-green-200 border border-green-500/30'}`}>
+              {isLocked ? t('remote.statusClosed') : t('remote.statusOpen')}
             </span>
-            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${room.isHidden ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>
-              {room.isHidden ? 'Results Hidden' : 'Results Visible'}
+            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${room.isHidden ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
+              {room.isHidden ? t('remote.statusHidden') : t('remote.statusVisible')}
             </span>
             {room.timerEndsAt && (
-              <span className={`text-[11px] px-2 py-0.5 rounded-full font-mono font-bold ${isExpired ? 'bg-red-500/20 text-red-300' : 'bg-indigo-500/20 text-indigo-300 animate-pulse'}`}>
-                {isExpired ? 'Timer Expired' : `Timer: ${formattedTime}`}
+              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold ${isExpired ? 'bg-red-500/20 text-red-200' : 'bg-indigo-500/20 text-indigo-200'}`}>
+                {isExpired ? t('remote.timerExpired') : `${t('live.timer')}: ${formattedTime}`}
               </span>
             )}
           </div>
@@ -234,69 +316,77 @@ export default function RemoteControl() {
         {/* Control Center Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button
+            type="button"
             onClick={() => emitAction('toggleRoomLock')}
-            className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${isLocked ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}
+            aria-pressed={isLocked}
+            className={`min-h-20 p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${isLocked ? 'bg-indigo-600/25 border-indigo-400/50 text-indigo-200' : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               {isLocked ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
               ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               )}
             </svg>
-            <span className="text-xs font-bold">{isLocked ? 'Unlock Voting' : 'Pause Voting'}</span>
+            <span className="text-xs font-bold">{isLocked ? t('remote.unlockSession') : t('remote.lockSession')}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => emitAction('toggleRoomVisibility')}
-            className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${room.isHidden ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}
+            aria-pressed={room.isHidden}
+            className={`min-h-20 p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${room.isHidden ? 'bg-indigo-600/25 border-indigo-400/50 text-indigo-200' : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               {room.isHidden ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
               )}
             </svg>
-            <span className="text-xs font-bold">{room.isHidden ? 'Show Results' : 'Hide Results'}</span>
+            <span className="text-xs font-bold">{room.isHidden ? t('remote.showResults') : t('remote.hideResults')}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => emitAction('toggleJoinInfo')}
-            className="p-4 rounded-xl border bg-white/5 border-white/10 text-white/60 hover:text-white flex flex-col items-center justify-center gap-2"
+            className="min-h-20 p-4 rounded-xl border bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
             </svg>
-            <span className="text-xs font-bold">Toggle QR Overlay</span>
+            <span className="text-xs font-bold">{t('remote.toggleQrOverlay')}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => emitAction('toggleReactions')}
-            className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${room.reactionsEnabled ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}
+            aria-pressed={room.reactionsEnabled}
+            className={`min-h-20 p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${room.reactionsEnabled ? 'bg-indigo-600/25 border-indigo-400/50 text-indigo-200' : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-            <span className="text-xs font-bold">{room.reactionsEnabled ? 'Disable Reactions' : 'Enable Reactions'}</span>
+            <span className="text-xs font-bold">{room.reactionsEnabled ? t('remote.disableReactions') : t('remote.enableReactions')}</span>
           </button>
         </div>
 
         {/* Timer Control Card */}
         <div className="glass-card p-4 mb-4">
-          <h3 className="text-sm font-bold text-white/70 mb-3 flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <h2 className="text-sm font-bold text-white/85 mb-3 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Session Timer
-          </h3>
-          
+            {t('live.timer')}
+          </h2>
+
           <div className="flex gap-2 mb-3">
             {[1, 2, 5].map(m => (
               <button
                 key={m}
+                type="button"
                 onClick={() => handleStartTimer(m)}
-                className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 text-xs font-medium rounded-lg text-white/80 border border-white/5"
+                className="flex-1 min-h-11 py-2 bg-white/5 hover:bg-white/10 text-xs font-medium rounded-lg text-white/85 border border-white/10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 {m} Min
               </button>
@@ -310,21 +400,24 @@ export default function RemoteControl() {
               step="0.5"
               value={timerMinutes}
               onChange={(e) => setTimerMinutes(e.target.value)}
+              aria-label={t('live.customDuration')}
               className="glass-input w-24 text-center text-sm"
               placeholder="Min"
             />
             <button
+              type="button"
               onClick={() => handleStartTimer(timerMinutes)}
-              className="flex-1 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-bold rounded-lg border border-indigo-500/30"
+              className="flex-1 min-h-11 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 text-xs font-bold rounded-lg border border-indigo-500/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
-              Start Timer
+              {t('live.startTimer')}
             </button>
             {room.timerEndsAt && (
               <button
+                type="button"
                 onClick={() => emitAction('clearTimer')}
-                className="py-2 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-lg border border-red-500/30"
+                className="min-h-11 py-2 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold rounded-lg border border-red-500/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
               >
-                Clear
+                {t('remote.clearTimer')}
               </button>
             )}
           </div>
@@ -333,44 +426,40 @@ export default function RemoteControl() {
         {/* Content Management / Live Responses */}
         <div className="glass-card p-4 mb-6">
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
-            <h3 className="text-sm font-bold text-white/70">
-              Live Content ({
+            <h2 className="text-sm font-bold text-white/85">
+              {t('remote.liveContent')} ({
                 room.type === 'WORDCLOUD' ? (room.words?.length || 0) :
                 room.type === 'QNA' ? (room.qnaMessages?.length || 0) :
-                room.type === 'OPEN_ENDED' ? (room.openAnswers?.length || 0) : 
+                room.type === 'OPEN_ENDED' ? (room.openAnswers?.length || 0) :
                 (room.options?.length || 0)
               })
-            </h3>
-            
+            </h2>
+
             <button
-              onClick={() => {
-                if (window.confirm('Reset this room? All submissions will be lost.')) {
-                  emitAction('resetRoom');
-                }
-              }}
-              className="text-[11px] text-red-400/80 hover:text-red-400"
+              type="button"
+              onClick={() => setShowResetModal(true)}
+              className="min-h-11 px-2 text-xs text-red-300 hover:text-red-200 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
             >
-              Clear Room Data
+              {t('remote.clearRoomData')}
             </button>
           </div>
 
-          {/* Type specific list view */}
           <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
-            
-            {/* WORDCLOUD */}
             {room.type === 'WORDCLOUD' && (
               (!room.words || room.words.length === 0) ? (
-                <p className="text-xs text-white/40 italic text-center py-4">No words submitted yet</p>
+                <p className="text-xs text-white/70 italic text-center py-4">{t('remote.noWords')}</p>
               ) : (
-                [...room.words].sort((a,b) => b.count - a.count).map(w => (
-                  <div key={w.id} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg border border-white/5">
-                    <span className="text-sm text-white font-medium">{w.text} <span className="text-white/40 text-xs font-normal">({w.count}x)</span></span>
+                [...room.words].sort((a, b) => b.count - a.count).map(w => (
+                  <div key={w.id} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg border border-white/10">
+                    <span className="text-sm text-white font-medium">{w.text} <span className="text-white/70 text-xs font-normal">({w.count}x)</span></span>
                     <button
+                      type="button"
                       onClick={() => emitAction('deleteWord', { wordId: w.id })}
-                      className="text-white/20 hover:text-red-400 transition-colors"
-                      title="Delete word"
+                      className="min-w-11 min-h-11 flex items-center justify-center rounded-lg text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      title={t('live.deleteWordTitle')}
+                      aria-label={t('live.deleteWordTitle')}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
@@ -379,23 +468,24 @@ export default function RemoteControl() {
               )
             )}
 
-            {/* Q&A */}
             {room.type === 'QNA' && (
               (!room.qnaMessages || room.qnaMessages.length === 0) ? (
-                <p className="text-xs text-white/40 italic text-center py-4">No questions asked yet</p>
+                <p className="text-xs text-white/70 italic text-center py-4">{t('remote.noQuestions')}</p>
               ) : (
                 room.qnaMessages.map(msg => (
-                  <div key={msg.id} className="flex gap-3 items-start bg-white/5 p-3 rounded-lg border border-white/5">
-                    <div className="bg-indigo-500/10 text-indigo-300 font-bold text-xs px-2 py-1 rounded min-w-[32px] text-center">
+                  <div key={msg.id} className="flex gap-3 items-start bg-white/5 p-3 rounded-lg border border-white/10">
+                    <div className="bg-indigo-500/15 text-indigo-200 font-bold text-xs px-2 py-1 rounded min-w-[36px] text-center">
                       ▲ {msg.upvotes}
                     </div>
-                    <p className="text-xs text-white/80 flex-1 leading-normal break-words">{msg.text}</p>
+                    <p className="text-xs text-white/90 flex-1 leading-normal break-words">{msg.text}</p>
                     <button
+                      type="button"
                       onClick={() => emitAction('deleteQna', { messageId: msg.id })}
-                      className="text-white/20 hover:text-red-400 transition-colors"
-                      title="Delete question"
+                      className="min-w-11 min-h-11 flex items-center justify-center rounded-lg text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      title={t('live.deleteQuestion')}
+                      aria-label={t('live.deleteQuestion')}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
@@ -404,20 +494,21 @@ export default function RemoteControl() {
               )
             )}
 
-            {/* OPEN ENDED */}
             {room.type === 'OPEN_ENDED' && (
               (!room.openAnswers || room.openAnswers.length === 0) ? (
-                <p className="text-xs text-white/40 italic text-center py-4">No answers submitted yet</p>
+                <p className="text-xs text-white/70 italic text-center py-4">{t('remote.noAnswers')}</p>
               ) : (
                 room.openAnswers.map(ans => (
-                  <div key={ans.id} className="flex justify-between items-start bg-white/5 p-3 rounded-lg border border-white/5 gap-3">
-                    <p className="text-xs text-white/80 leading-normal flex-1 break-words">{ans.text}</p>
+                  <div key={ans.id} className="flex justify-between items-start bg-white/5 p-3 rounded-lg border border-white/10 gap-3">
+                    <p className="text-xs text-white/90 leading-normal flex-1 break-words">{ans.text}</p>
                     <button
+                      type="button"
                       onClick={() => emitAction('deleteOpenAnswer', { answerId: ans.id })}
-                      className="text-white/20 hover:text-red-400 transition-colors"
-                      title="Delete answer"
+                      className="min-w-11 min-h-11 flex items-center justify-center rounded-lg text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      title={t('live.deleteContribution')}
+                      aria-label={t('live.deleteContribution')}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
@@ -426,16 +517,15 @@ export default function RemoteControl() {
               )
             )}
 
-            {/* POLL & RANKING Results */}
             {(room.type === 'POLL' || room.type === 'RANKING') && (
               room.options?.map((opt, idx) => {
-                const totalVotes = room.options.reduce((sum, o) => sum + o.votes, 0) || 1;
-                const percentage = Math.round((opt.votes / totalVotes) * 100);
+                const total = room.options.reduce((sum, o) => sum + o.votes, 0) || 1;
+                const percentage = Math.round((opt.votes / total) * 100);
                 return (
-                  <div key={opt.id} className="bg-white/5 p-3 rounded-lg border border-white/5 flex flex-col gap-1.5">
-                    <div className="flex justify-between text-xs font-medium text-white/90">
+                  <div key={opt.id} className="bg-white/5 p-3 rounded-lg border border-white/10 flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs font-medium text-white/95">
                       <span>{idx + 1}. {opt.text}</span>
-                      <span>{opt.votes} {room.type === 'RANKING' ? 'pts' : 'votes'} ({percentage}%)</span>
+                      <span>{opt.votes} {room.type === 'RANKING' ? t('report.points') : t('report.votes')} ({percentage}%)</span>
                     </div>
                     <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div className="h-full bg-indigo-500" style={{ width: `${percentage}%` }} />
@@ -445,26 +535,37 @@ export default function RemoteControl() {
               })
             )}
 
-            {/* RATING Results */}
             {room.type === 'RATING' && (
               room.options?.map(opt => {
                 const avg = opt.ratingCount > 0 ? (opt.ratingTotal / opt.ratingCount).toFixed(1) : 0;
                 return (
-                  <div key={opt.id} className="bg-white/5 p-3 rounded-lg border border-white/5 flex justify-between items-center">
+                  <div key={opt.id} className="bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
                     <div className="flex flex-col">
-                      <span className="text-xs font-medium text-white/90">{opt.text}</span>
-                      <span className="text-[10px] text-white/40">{opt.ratingCount} ratings</span>
+                      <span className="text-xs font-medium text-white/95">{opt.text}</span>
+                      <span className="text-[10px] text-white/70">{t('live.ratingsCount', { count: opt.ratingCount })}</span>
                     </div>
                     <span className="text-sm font-bold text-indigo-400">{avg} / 5</span>
                   </div>
                 );
               })
             )}
-
           </div>
         </div>
-
       </div>
+
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title={t('live.resetModalTitle')}
+        description={t('remote.clearRoomConfirm')}
+        confirmText={t('live.resetConfirm')}
+        confirmVariant="danger"
+        onConfirm={() => {
+          emitAction('resetRoom');
+          setShowResetModal(false);
+        }}
+      />
+
       <Footer />
     </div>
   );

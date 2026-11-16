@@ -205,6 +205,47 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Short-lived single-use ticket for QR remote control login (avoids leaking long-lived JWT in QR/URL)
+const remoteTickets = new Map();
+
+app.post('/api/auth/remote-ticket', authenticateToken, (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  const ticket = crypto.randomBytes(24).toString('hex');
+  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+  remoteTickets.set(ticket, {
+    token,
+    role: req.user.role,
+    username: req.user.username,
+    expiresAt
+  });
+
+  // Clean up expired tickets opportunistically
+  for (const [k, v] of remoteTickets.entries()) {
+    if (Date.now() > v.expiresAt) remoteTickets.delete(k);
+  }
+
+  res.json({ ticket });
+});
+
+app.post('/api/auth/exchange-ticket', (req, res) => {
+  const { ticket } = req.body || {};
+  if (!ticket || !remoteTickets.has(ticket)) {
+    return res.status(401).json({ error: 'Invalid or expired ticket' });
+  }
+
+  const data = remoteTickets.get(ticket);
+  remoteTickets.delete(ticket);
+
+  if (Date.now() > data.expiresAt) {
+    return res.status(401).json({ error: 'Invalid or expired ticket' });
+  }
+
+  res.json({ token: data.token, role: data.role, username: data.username });
+});
+
 app.post('/api/admin/rooms', authenticateToken, async (req, res) => {
   const { type, options, question, wordLimit, userId } = req.body; 
   try {

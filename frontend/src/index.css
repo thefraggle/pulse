@@ -5,14 +5,28 @@
   --color-pulse-glass: rgba(255, 255, 255, 0.05);
   --color-pulse-glass-border: rgba(255, 255, 255, 0.1);
   --color-pulse-glow: #6366f1;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-[var(--color-pulse-bg)] text-white font-sans antialiased;
     background-image: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%);
     min-height: 100vh;
+  }
+
+  /* Prevent page scroll chaining behind native modal <dialog> */
+  dialog:modal {
+    overscroll-behavior: contain;
+  }
+
+  dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
   }
 }
 
@@ -22,16 +36,23 @@
   }
   
   .glass-button {
-    @apply bg-[var(--color-pulse-glass)] hover:bg-white/10 backdrop-blur-md border border-[var(--color-pulse-glass-border)] rounded-xl transition-all duration-300 font-medium;
+    @apply bg-[var(--color-pulse-glass)] hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0f1a] disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-md border border-[var(--color-pulse-glass-border)] rounded-xl transition-all duration-200 font-medium;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .glow-button {
-    @apply bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all duration-300 font-bold shadow-[0_0_15px_rgba(99,102,241,0.5)] hover:shadow-[0_0_25px_rgba(99,102,241,0.8)];
+    @apply bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0f1a] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-200 font-bold shadow-[0_0_15px_rgba(99,102,241,0.45)] hover:shadow-[0_0_22px_rgba(99,102,241,0.7)];
   }
 
   .glass-input {
-    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all;
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-button,
+  .glow-button {
+    transition-property: color, background-color, border-color, opacity;
   }
 }
 

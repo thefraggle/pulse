@@ -25,4 +25,13 @@ i18n
     }
   });
 
+const syncHtmlLang = (lng) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lng?.startsWith('de') ? 'de' : 'en';
+  }
+};
+
+syncHtmlLang(i18n.resolvedLanguage || i18n.language);
+i18n.on('languageChanged', syncHtmlLang);
+
 export default i18n;

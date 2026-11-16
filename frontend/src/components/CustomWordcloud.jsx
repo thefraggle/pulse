@@ -147,9 +147,16 @@ export default function CustomWordcloud({ words = [], isAdmin = false, onWordCli
   }, [computeLayout]);
 
   useEffect(() => {
-    const observer = new ResizeObserver(() => computeLayout());
+    let timerId;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timerId);
+      timerId = setTimeout(() => computeLayout(), 150);
+    });
     if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timerId);
+      observer.disconnect();
+    };
   }, [computeLayout]);
 
   if (isPrint) {
@@ -157,7 +164,7 @@ export default function CustomWordcloud({ words = [], isAdmin = false, onWordCli
       <div ref={containerRef} className="relative w-full h-full overflow-hidden">
         {placements.map((item) => (
           <span
-            key={`${item.text}-${item.value}`}
+            key={item.id || item.text}
             style={{
               position: 'absolute',
               left: `${item.x}px`,
@@ -182,7 +189,7 @@ export default function CustomWordcloud({ words = [], isAdmin = false, onWordCli
     <div ref={containerRef} className="relative w-full h-full overflow-hidden">
       {placements.map((item, i) => (
         <motion.span
-          key={`${item.text}-${item.value}`}
+          key={item.id || item.text}
           initial={{ opacity: 0, scale: 0.3 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 180, damping: 18, delay: i * 0.04 }}

@@ -1,14 +1,15 @@
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
+import i18n from '../i18n';
 
-const tourConfig = {
+const getTourConfig = () => ({
   showProgress: true,
   animate: true,
   popoverClass: 'driverjs-theme-pulse',
-  nextBtnText: 'Next',
-  prevBtnText: 'Back',
-  doneBtnText: 'Got it!',
-};
+  nextBtnText: i18n.t('common.next'),
+  prevBtnText: i18n.t('common.back'),
+  doneBtnText: i18n.t('common.gotIt'),
+});
 
 export const startDashboardTour = (force = false) => {
   if (!force && localStorage.getItem('pulse_tour_dashboard') === 'done') {
@@ -16,13 +17,13 @@ export const startDashboardTour = (force = false) => {
   }
 
   const driverObj = driver({
-    ...tourConfig,
+    ...getTourConfig(),
     steps: [
       {
         element: '#tour-create-session',
         popover: {
-          title: 'Create a Session',
-          description: 'Choose a type (like Wordcloud or Poll), enter your question, and start a new session instantly.',
+          title: i18n.t('tour.createTitle'),
+          description: i18n.t('tour.createDesc'),
           side: 'right',
           align: 'start'
         }
@@ -30,8 +31,8 @@ export const startDashboardTour = (force = false) => {
       {
         element: '#tour-active-sessions',
         popover: {
-          title: 'Your Active Sessions',
-          description: 'Manage your sessions here. Use the icons to download results as CSV, duplicate a session, or delete it.',
+          title: i18n.t('tour.activeTitle'),
+          description: i18n.t('tour.activeDesc'),
           side: 'left',
           align: 'start'
         }
@@ -54,13 +55,13 @@ export const startLiveTour = (force = false) => {
   }
 
   const driverObj = driver({
-    ...tourConfig,
+    ...getTourConfig(),
     steps: [
       {
         element: '#tour-join-info',
         popover: {
-          title: 'Invite Participants',
-          description: 'Share this short code or QR code with your audience so they can join and vote on their smartphones.',
+          title: i18n.t('tour.inviteTitle'),
+          description: i18n.t('tour.inviteDesc'),
           side: 'bottom',
           align: 'center'
         }
@@ -68,8 +69,8 @@ export const startLiveTour = (force = false) => {
       {
         element: '#tour-admin-controls',
         popover: {
-          title: 'Host Controls',
-          description: 'Your command center in order: 1. Pause voting, 2. Set countdown timer, 3. Hide results, 4. Toggle live reactions, 5. Export to CSV, 6. Print PDF report, 7. Open mobile remote control, 8. Reset/Clear room data, 9. Show/Hide QR code & join info.',
+          title: i18n.t('tour.controlsTitle'),
+          description: i18n.t('tour.controlsDesc'),
           side: 'bottom',
           align: 'center'
         }
